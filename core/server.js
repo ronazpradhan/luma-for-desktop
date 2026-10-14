@@ -16,6 +16,7 @@ import { createSaavn } from "./saavn.js";
 import { cleanTrack, openStore } from "./store.js";
 import { createYtDlp } from "./ytdlp.js";
 import { createYtMusic } from "./ytmusic.js";
+import { isSignedInJar, openYouTubeAuth, parseNetscape } from "./youtube-auth.js";
 
 const VIDEO_ID = /^[A-Za-z0-9_-]{11}$/;
 const BROWSE_ID = /^[A-Za-z0-9_-]{2,80}$/;
@@ -30,14 +31,15 @@ class HttpError extends Error {
   }
 }
 
-export async function startServer({ port = 0, key, dataDir, musicDir, staticDir = null, devOrigins = [], version = "0.1.0", log = console.log }) {
+export async function startServer({ port = 0, key, dataDir, musicDir, staticDir = null, devOrigins = [], version = "0.1.0", vault = null, log = console.log }) {
   if (!key || key.length < 32) throw new Error("LUMA needs a long random key");
   const keyBuf = Buffer.from(key);
   const store = await openStore(dataDir);
   const ytmusic = createYtMusic();
   const saavn = createSaavn();
   const ytdlp = createYtDlp({ binDir: path.join(dataDir, "bin"), log });
-  const resolver = createResolver({ saavn, ytdlp, log });
+  const youtubeAuth = await openYouTubeAuth({ dataDir, vault });
+  const resolver = createResolver({ saavn, ytdlp, youtubeAuth, tmpDir: path.join(dataDir, "bin"), log });
   const lyrics = createLyrics({ ytmusic, version });
   const downloads = new Map(); // id -> { state, progress, error }
   const images = new Map(); // url -> { type, body } (small LRU)
@@ -124,7 +126,7 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
     for (let attempt = 0; attempt < 2; attempt++) {
       const ac = new AbortController();
       res.on("close", () => ac.abort());
-      const headers = { "User-Agent": "Mozilla/5.0" };
+      const headers = { "User-Agent": stream.userAgent ?? "Mozilla/5.0" };
       if (req.headers.range) headers.Range = req.headers.range;
       const up = await fetch(stream.url, { headers, signal: ac.signal, redirect: "follow" });
       if ((up.status === 403 || up.status === 410) && attempt === 0) {
@@ -178,7 +180,7 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
       let total = stream.size ?? null;
       const STEP = 4 * 1024 * 1024;
       for (;;) {
-        const up = await fetch(stream.url, { headers: { "User-Agent": "Mozilla/5.0", Range: `bytes=${got}-${got + STEP - 1}` }, signal: AbortSignal.timeout(60_000) });
+        const up = await fetch(stream.url, { headers: { "User-Agent": stream.userAgent ?? "Mozilla/5.0", Range: `bytes=${got}-${got + STEP - 1}` }, signal: AbortSignal.timeout(60_000) });
         if (up.status !== 206 && up.status !== 200) throw new Error(`download answered ${up.status}`);
         const buf = Buffer.from(await up.arrayBuffer());
         chunks.push(buf);
@@ -270,7 +272,7 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
 
     switch (`${m} ${seg[0]}${seg.length > 2 ? `/${seg[2]}` : ""}`) {
       case "GET status":
-        return send(res, 200, { version, ytdlp: await ytdlp.version().catch((e) => `unavailable: ${e.message}`) });
+        return send(res, 200, { version, ytdlp: await ytdlp.version().catch((e) => `unavailable: ${e.message}`), youtube: { signedIn: youtubeAuth.signedIn(), canSignIn: !!vault } });
       case "GET home":
         return send(res, 200, { shelves: await ytmusic.home() });
       case "GET foryou":
@@ -299,7 +301,9 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
         const local = store.download(t.id);
         if (local) return send(res, 200, { source: "download", codec: local.type === "audio/webm" ? "opus" : "aac" });
         const s = await resolver.resolve(t).catch((e) => {
-          throw new HttpError(502, `Couldn't find this song (${e.message})`);
+          const err = new HttpError(502, e.code ? e.message : `Couldn't find this song (${e.message})`);
+          err.code = e.code;
+          throw err;
         });
         return send(res, 200, { source: s.source, codec: s.codec, kbps: s.kbps });
       }
@@ -364,11 +368,18 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
     }
   }
 
+  async function adoptJar(cookies, notSignedIn) {
+    if (!isSignedInJar(cookies)) throw new Error(notSignedIn);
+    await youtubeAuth.set(cookies);
+    resolver.forgetYouTube();
+    return true;
+  }
+
   const server = http.createServer((req, res) => {
     route(req, res).catch((e) => {
       const status = e instanceof HttpError ? e.status : 502;
       if (!(e instanceof HttpError)) log(`${req.method} ${req.url?.split("?")[0]}: ${e.message}`);
-      if (!res.headersSent) send(res, status, { error: e.message });
+      if (!res.headersSent) send(res, status, { error: e.message, code: e.code });
       else res.destroy();
     });
   });
@@ -379,6 +390,30 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
 
   return {
     port: actualPort,
+    /**
+     * Takes the YouTube session from the listener's own browser (asked for by
+     * the app, never over HTTP). Only YouTube's and Google's cookies are kept.
+     */
+    async importYouTubeFromBrowser(browser) {
+      const tmp = path.join(dataDir, "bin", `jar-${Date.now()}.txt`);
+      await mkdir(path.dirname(tmp), { recursive: true });
+      try {
+        await ytdlp.exportBrowserCookies(browser, tmp);
+        const text = await readFile(tmp, "utf8").catch(() => "");
+        return await adoptJar(parseNetscape(text), "That browser isn't signed in to YouTube. Sign in at music.youtube.com there first.");
+      } finally {
+        await rm(tmp, { force: true });
+      }
+    },
+    async importYouTubeFromFile(file) {
+      const info = await stat(file);
+      if (info.size > 5_000_000) throw new Error("That file is too big to be a cookies file.");
+      return adoptJar(parseNetscape(await readFile(file, "utf8")), "That file has no signed-in YouTube session in it.");
+    },
+    async signOutYouTube() {
+      await youtubeAuth.clear();
+      resolver.forgetYouTube();
+    },
     async close() {
       await store.flush().catch(() => {});
       await new Promise((r) => server.close(r));

@@ -2,7 +2,8 @@
 // one locked-down window onto it. The page gets no Node, no file access, and
 // can't navigate anywhere but LUMA itself; links open in the real browser.
 
-const { app, BrowserWindow, Menu, ipcMain, session, shell } = require("electron");
+const { app, BrowserWindow, Menu, dialog, ipcMain, safeStorage, session, shell } = require("electron");
+const fs = require("node:fs");
 const crypto = require("node:crypto");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
@@ -37,6 +38,10 @@ async function start() {
     musicDir: path.join(app.getPath("music"), "LUMA"),
     staticDir: path.join(__dirname, "..", "dist"),
     version: app.getVersion(),
+    // Windows' data protection (DPAPI) keeps the YouTube session unreadable to other accounts.
+    vault: safeStorage.isEncryptionAvailable()
+      ? { encrypt: (text) => safeStorage.encryptString(text), decrypt: (buf) => safeStorage.decryptString(buf) }
+      : null,
     log: (m) => console.log(m),
   });
   origin = `http://127.0.0.1:${engine.port}`;
@@ -46,9 +51,29 @@ async function start() {
   session.defaultSession.setPermissionCheckHandler(() => false);
 
   // The key goes only to LUMA's own page, asked for by its preload.
+  const fromLuma = (event) => (event.senderFrame?.url ?? "").startsWith(`${origin}/`);
   ipcMain.on("luma:key", (event) => {
-    const url = event.senderFrame?.url ?? "";
-    event.returnValue = url.startsWith(`${origin}/`) ? key : null;
+    event.returnValue = fromLuma(event) ? key : null;
+  });
+  // YouTube sign-in comes from the listener's own browser (Google won't let
+  // anyone sign in inside an app window), or from a cookies file they pick.
+  ipcMain.handle("luma:youtube-browsers", (event) => (fromLuma(event) ? installedBrowsers() : []));
+  ipcMain.handle("luma:youtube-from-browser", (event, browser) =>
+    fromLuma(event) ? outcome(engine.importYouTubeFromBrowser(String(browser))) : refused());
+  ipcMain.handle("luma:youtube-from-file", async (event) => {
+    if (!fromLuma(event)) return refused();
+    const pick = await dialog.showOpenDialog(win, {
+      title: "Choose a YouTube cookies file",
+      properties: ["openFile"],
+      filters: [{ name: "Cookies file", extensions: ["txt"] }],
+    });
+    if (pick.canceled || !pick.filePaths[0]) return { ok: false, cancelled: true };
+    return outcome(engine.importYouTubeFromFile(pick.filePaths[0]));
+  });
+  ipcMain.handle("luma:youtube-sign-out", async (event) => {
+    if (!fromLuma(event)) return false;
+    await engine.signOutYouTube();
+    return true;
   });
 
   win = new BrowserWindow({
@@ -85,6 +110,31 @@ async function start() {
   win.once("ready-to-show", () => win.show());
   win.on("closed", () => { win = null; });
   await win.loadURL(`${origin}/`);
+}
+
+// ---- YouTube sign-in --------------------------------------------------------
+
+const BROWSER_DIRS = {
+  firefox: () => path.join(app.getPath("appData"), "Mozilla", "Firefox", "Profiles"),
+  edge: () => path.join(process.env.LOCALAPPDATA ?? "", "Microsoft", "Edge", "User Data"),
+  chrome: () => path.join(process.env.LOCALAPPDATA ?? "", "Google", "Chrome", "User Data"),
+  brave: () => path.join(process.env.LOCALAPPDATA ?? "", "BraveSoftware", "Brave-Browser", "User Data"),
+};
+
+function installedBrowsers() {
+  return Object.entries(BROWSER_DIRS).filter(([, dir]) => fs.existsSync(dir())).map(([id]) => id);
+}
+
+async function outcome(job) {
+  try {
+    return { ok: await job };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+function refused() {
+  return { ok: false, error: "Not allowed" };
 }
 
 let quitting = false;

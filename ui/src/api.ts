@@ -34,9 +34,18 @@ export type Lyrics = { synced: boolean; lines: { time: number | null; text: stri
 export type Resolved = { source: "jiosaavn" | "youtube" | "download"; codec: string; kbps?: number | null };
 export type DownloadState = Record<string, { state: "running" | "done" | "failed"; progress: number; error?: string }>;
 
+export type SignInResult = { ok: boolean; error?: string; cancelled?: boolean };
+
 declare global {
   interface Window {
-    luma?: { key: string; platform: string };
+    luma?: {
+      key: string;
+      platform: string;
+      youtubeBrowsers(): Promise<string[]>;
+      youtubeFromBrowser(browser: string): Promise<SignInResult>;
+      youtubeFromFile(): Promise<SignInResult>;
+      youtubeSignOut(): Promise<boolean>;
+    };
   }
 }
 
@@ -53,7 +62,7 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<T>
   if (body !== undefined) headers["Content-Type"] = "application/json";
   const res = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error ?? `LUMA's engine answered ${res.status}`);
+  if (!res.ok) throw Object.assign(new Error(data.error ?? `LUMA's engine answered ${res.status}`), { code: data.code as string | undefined });
   return data as T;
 }
 
@@ -63,7 +72,7 @@ export function slim(t: Track): Track {
 }
 
 export const api = {
-  status: () => call<{ version: string; ytdlp: string }>("GET", "/api/status"),
+  status: () => call<{ version: string; ytdlp: string; youtube: { signedIn: boolean; canSignIn: boolean } }>("GET", "/api/status"),
   home: () => call<{ shelves: Shelf[] }>("GET", "/api/home"),
   forYou: () => call<{ basedOn: string | null; songs: Track[] }>("GET", "/api/foryou"),
   search: (q: string) => call<SearchResults>("GET", `/api/search?q=${encodeURIComponent(q)}`),

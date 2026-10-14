@@ -317,6 +317,10 @@ h1, h2, h3, p { margin: 0; }
 .empty p { max-width: 44ch; }
 
 .settings-group { border-radius: var(--radius-panel); padding: 20px 22px; margin-bottom: 14px; display: grid; gap: 10px; }
+.actions.compact { margin: 4px 0 0; }
+.problem { color: #ffc2b6; }
+.account-row { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+.account-row > span { display: grid; gap: 6px; }
 .settings-group h2 { font-size: 16px; font-weight: 700; }
 .settings-group p { color: var(--haze); line-height: 1.6; max-width: 70ch; }
 .about-list, .keys { display: grid; grid-template-columns: max-content 1fr; gap: 8px 24px; margin: 0; }

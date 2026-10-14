@@ -90,7 +90,12 @@ export const usePlayer = create<PlayerState>((set, get) => {
       if (token !== loadToken) return;
       if ((e as Error).name === "AbortError") return;
       set({ loading: false });
-      toast(`Couldn't play "${track.title}". Skipping it.`);
+      const code = (e as { code?: string }).code;
+      toast(code === "YOUTUBE_SIGNIN"
+        ? `"${track.title}" needs YouTube. Connect YouTube in Settings to play songs like it.`
+        : code === "YOUTUBE_BLOCKED"
+          ? `YouTube is refusing this PC right now. Skipping "${track.title}".`
+          : `Couldn't play "${track.title}". Skipping it.`);
       setTimeout(() => token === loadToken && advance(true), 1200);
     }
   }

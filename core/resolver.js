@@ -7,7 +7,7 @@ import { bestMatch } from "./match.js";
 const SAAVN_TTL_MS = 6 * 3_600_000;
 const YT_FALLBACK_TTL_MS = 5 * 3_600_000;
 
-export function createResolver({ saavn, ytdlp, log = () => {} }) {
+export function createResolver({ saavn, ytdlp, youtubeAuth = null, tmpDir = null, log = () => {} }) {
   const cache = new Map(); // video id -> { stream, expiresAt }
   const inFlight = new Map();
 
@@ -34,9 +34,10 @@ export function createResolver({ saavn, ytdlp, log = () => {} }) {
   }
 
   async function viaYouTube(track) {
-    const a = await ytdlp.audio(track.id);
+    const run = (cookieFile) => ytdlp.audio(track.id, { cookieFile });
+    const a = youtubeAuth ? await youtubeAuth.withCookieFile(tmpDir, run) : await run(null);
     const expire = Number(new URL(a.url).searchParams.get("expire")) * 1000;
-    return { source: "youtube", url: a.url, codec: a.codec, kbps: a.kbps, size: a.size, expiresAt: expire || Date.now() + YT_FALLBACK_TTL_MS };
+    return { source: "youtube", url: a.url, codec: a.codec, kbps: a.kbps, size: a.size, userAgent: a.userAgent, expiresAt: expire || Date.now() + YT_FALLBACK_TTL_MS };
   }
 
   async function lookUp(track) {
@@ -69,6 +70,11 @@ export function createResolver({ saavn, ytdlp, log = () => {} }) {
     /** Drops a link that stopped working, so the next play looks again. */
     forget(id) {
       cache.delete(id);
+    },
+
+    /** After signing in or out, YouTube links from the other state are stale. */
+    forgetYouTube() {
+      for (const [id, hit] of cache) if (hit.stream.source === "youtube") cache.delete(id);
     },
   };
 }
