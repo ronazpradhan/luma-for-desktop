@@ -1,0 +1,75 @@
+{
+  "name": "luma-desktop",
+  "productName": "LUMA",
+  "version": "0.1.0",
+  "description": "LUMA music player for Windows",
+  "author": "Ronaz Pradhan",
+  "license": "GPL-3.0-only",
+  "private": true,
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "concurrently -k -n core,ui -c magenta,cyan \"npm:dev:core\" \"npm:dev:ui\"",
+    "dev:core": "node --watch core/index.js",
+    "dev:ui": "vite",
+    "app": "npm run build:ui && electron .",
+    "build:ui": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test core/test/*.test.js",
+    "dist": "npm run build:ui && electron-builder --win"
+  },
+  "dependencies": {
+    "des.js": "^1.1.0"
+  },
+  "devDependencies": {
+    "@fontsource-variable/plus-jakarta-sans": "^5.3.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "concurrently": "^10.0.6",
+    "electron": "^44.7.2",
+    "electron-builder": "^26.15.3",
+    "lucide-react": "^1.57.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4",
+    "zustand": "^5.0.15"
+  },
+  "build": {
+    "appId": "com.luma.desktop",
+    "productName": "LUMA",
+    "copyright": "Copyright © 2026 Ronaz Pradhan",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "electron/**",
+      "core/**",
+      "!core/test/**",
+      "dist/**",
+      "package.json"
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "artifactName": "LUMA-Setup-${version}.exe"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "deleteAppDataOnUninstall": false,
+      "shortcutName": "LUMA",
+      "uninstallDisplayName": "LUMA"
+    }
+  }
+}

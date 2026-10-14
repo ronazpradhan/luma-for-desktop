@@ -1,0 +1,113 @@
+import { Download, Heart, ListMusic, Maximize2, Mic2, Pause, Play, Repeat, Repeat1, Shuffle, SkipBack, SkipForward, Volume1, Volume2, VolumeX } from "lucide-react";
+import { formatTime } from "../api";
+import { useLibrary } from "../library";
+import { useNav } from "../nav";
+import { usePlayer } from "../player";
+import { Art, Spinner } from "./bits";
+
+export function Seek({ className = "" }: { className?: string }) {
+  const position = usePlayer((s) => s.position);
+  const duration = usePlayer((s) => s.duration);
+  const seek = usePlayer((s) => s.seek);
+  const pct = duration ? (position / duration) * 100 : 0;
+  return (
+    <div className={`seek ${className}`}>
+      <span className="seek-time">{formatTime(position)}</span>
+      <input
+        type="range"
+        className="range"
+        min={0}
+        max={duration || 0}
+        step={0.5}
+        value={Math.min(position, duration || 0)}
+        style={{ ["--fill" as string]: `${pct}%` }}
+        onChange={(e) => seek(Number(e.target.value))}
+        aria-label="Seek"
+        disabled={!duration}
+      />
+      <span className="seek-time">{formatTime(duration)}</span>
+    </div>
+  );
+}
+
+export function Transport({ big = false }: { big?: boolean }) {
+  const p = usePlayer();
+  const size = big ? 30 : 20;
+  return (
+    <div className={`transport ${big ? "transport-big" : ""}`}>
+      <button className={`icon-btn ${p.shuffle ? "is-on" : ""}`} onClick={p.toggleShuffle} aria-label="Shuffle" aria-pressed={p.shuffle}><Shuffle size={big ? 20 : 17} /></button>
+      <button className="icon-btn" onClick={p.previous} aria-label="Previous"><SkipBack size={size} fill="currentColor" /></button>
+      <button className="play-btn" onClick={p.toggle} aria-label={p.playing ? "Pause" : "Play"} disabled={!p.current()}>
+        {p.loading ? <Spinner size={big ? 26 : 18} /> : p.playing ? <Pause size={size} fill="currentColor" /> : <Play size={size} fill="currentColor" />}
+      </button>
+      <button className="icon-btn" onClick={p.next} aria-label="Next"><SkipForward size={size} fill="currentColor" /></button>
+      <button className={`icon-btn ${p.repeat !== "off" ? "is-on" : ""}`} onClick={p.cycleRepeat} aria-label={`Repeat: ${p.repeat}`}>
+        {p.repeat === "one" ? <Repeat1 size={big ? 20 : 17} /> : <Repeat size={big ? 20 : 17} />}
+      </button>
+    </div>
+  );
+}
+
+export function SourceBadge() {
+  const source = usePlayer((s) => s.source);
+  if (!source) return null;
+  const label = source.source === "download" ? "Downloaded" : `${source.codec === "opus" ? "Opus" : "AAC"}${source.kbps ? ` ${source.kbps}` : ""}`;
+  return <span className="badge" title={source.source === "jiosaavn" ? "Streaming from JioSaavn" : source.source === "youtube" ? "Streaming from YouTube" : "Playing from this PC"}>{label}</span>;
+}
+
+export function PlayerBar() {
+  const p = usePlayer();
+  const track = p.current();
+  const lib = useLibrary();
+  const go = useNav((s) => s.go);
+  const liked = track ? lib.isLiked(track.id) : false;
+  const dl = track ? lib.downloadState[track.id] : undefined;
+  const downloaded = track ? !!lib.downloads[track.id] : false;
+  const VolIcon = p.muted || p.volume === 0 ? VolumeX : p.volume < 0.5 ? Volume1 : Volume2;
+
+  return (
+    <footer className="playerbar glass" aria-label="Player">
+      <div className="pb-track">
+        {track ? (
+          <>
+            <button className="pb-art" onClick={() => p.setNowPlaying(true)} aria-label="Open Now Playing">
+              <Art src={track.art} size={56} />
+              <span className="pb-expand"><Maximize2 size={16} /></span>
+            </button>
+            <div className="pb-text">
+              <button className="pb-title" onClick={() => p.setNowPlaying(true)}>{track.title}</button>
+              <div className="pb-artist">
+                {track.artistId ? <button className="link" onClick={() => go({ name: "artist", id: track.artistId! })}>{track.artist}</button> : track.artist}
+              </div>
+            </div>
+            <button className={`icon-btn ${liked ? "is-on" : ""}`} onClick={() => lib.toggleLike(track)} aria-label={liked ? "Remove from Liked songs" : "Add to Liked songs"} aria-pressed={liked}>
+              <Heart size={18} fill={liked ? "currentColor" : "none"} />
+            </button>
+          </>
+        ) : (
+          <div className="pb-idle">Pick a song to start</div>
+        )}
+      </div>
+      <div className="pb-center">
+        <Transport />
+        <Seek />
+      </div>
+      <div className="pb-right">
+        <SourceBadge />
+        {track && (
+          dl?.state === "running" ? (
+            <span className="dl-ring big" style={{ ["--p" as string]: dl.progress }} aria-label="Downloading" />
+          ) : (
+            <button className={`icon-btn ${downloaded ? "is-on" : ""}`} disabled={downloaded} onClick={() => lib.download([track])} aria-label={downloaded ? "Downloaded" : "Download"} title={downloaded ? "Downloaded" : "Download"}>
+              <Download size={18} />
+            </button>
+          )
+        )}
+        <button className={`icon-btn ${p.nowPlayingOpen ? "is-on" : ""}`} onClick={() => p.setNowPlaying(!p.nowPlayingOpen)} aria-label="Lyrics" disabled={!track}><Mic2 size={18} /></button>
+        <button className={`icon-btn ${p.queueOpen ? "is-on" : ""}`} onClick={() => p.setQueueOpen(!p.queueOpen)} aria-label="Queue"><ListMusic size={18} /></button>
+        <button className="icon-btn" onClick={p.toggleMute} aria-label={p.muted ? "Unmute" : "Mute"}><VolIcon size={18} /></button>
+        <input type="range" className="range volume" min={0} max={1} step={0.01} value={p.muted ? 0 : p.volume} style={{ ["--fill" as string]: `${(p.muted ? 0 : p.volume) * 100}%` }} onChange={(e) => p.setVolume(Number(e.target.value))} aria-label="Volume" />
+      </div>
+    </footer>
+  );
+}
