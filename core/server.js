@@ -31,7 +31,7 @@ class HttpError extends Error {
   }
 }
 
-export async function startServer({ port = 0, key, dataDir, musicDir, staticDir = null, devOrigins = [], version = "0.1.0", vault = null, log = console.log }) {
+export async function startServer({ port = 0, key, dataDir, musicDir, staticDir = null, devOrigins = [], version = "0.1.0", vault = null, warmUp = true, log = console.log }) {
   if (!key || key.length < 32) throw new Error("LUMA needs a long random key");
   const keyBuf = Buffer.from(key);
   const store = await openStore(dataDir);
@@ -417,6 +417,8 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
   await new Promise((resolve) => server.listen(port, "127.0.0.1", resolve));
   actualPort = server.address().port;
   log(`LUMA engine on http://127.0.0.1:${actualPort}`);
+  // Install or update yt-dlp now, not during the first song that needs YouTube.
+  if (warmUp) ytdlp.version().catch((e) => log(`yt-dlp not ready: ${e.message}`));
 
   return {
     port: actualPort,

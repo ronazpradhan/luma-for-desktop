@@ -6,6 +6,8 @@ import { bestMatch } from "./match.js";
 
 const SAAVN_TTL_MS = 6 * 3_600_000;
 const YT_FALLBACK_TTL_MS = 5 * 3_600_000;
+/** How long JioSaavn has alone before YouTube starts too (it usually answers in 0.2-0.6 s). */
+const HEDGE_MS = 700;
 
 export function createResolver({ saavn, ytdlp, youtubeAuth = null, tmpDir = null, log = () => {} }) {
   const cache = new Map(); // video id -> { stream, expiresAt }
@@ -33,8 +35,8 @@ export function createResolver({ saavn, ytdlp, youtubeAuth = null, tmpDir = null
     };
   }
 
-  async function viaYouTube(track) {
-    const run = (cookieFile) => ytdlp.audio(track.id, { cookieFile });
+  async function viaYouTube(track, signal) {
+    const run = (cookieFile) => ytdlp.audio(track.id, { cookieFile, signal });
     const a = youtubeAuth ? await youtubeAuth.withCookieFile(tmpDir, run) : await run(null);
     const expire = Number(new URL(a.url).searchParams.get("expire")) * 1000;
     return { source: "youtube", url: a.url, codec: a.codec, kbps: a.kbps, size: a.size, userAgent: a.userAgent, expiresAt: expire || Date.now() + YT_FALLBACK_TTL_MS };
@@ -42,11 +44,26 @@ export function createResolver({ saavn, ytdlp, youtubeAuth = null, tmpDir = null
 
   async function lookUp(track) {
     const t0 = Date.now();
+    // JioSaavn first; if it hasn't answered within HEDGE_MS, YouTube starts
+    // alongside, and a JioSaavn hit then stops it. A JioSaavn miss no longer
+    // costs its whole wait before YouTube even begins.
+    const stopYouTube = new AbortController();
+    let youTube = null;
+    const startYouTube = () => (youTube ??= viaYouTube(track, stopYouTube.signal));
+    const hedge = setTimeout(startYouTube, HEDGE_MS);
     const fromSaavn = await viaSaavn(track).catch((e) => {
       log(`jiosaavn failed for ${track.id}: ${e.message}`);
       return null;
     });
-    const stream = fromSaavn ?? (await viaYouTube(track));
+    clearTimeout(hedge);
+    let stream;
+    if (fromSaavn) {
+      stopYouTube.abort();
+      youTube?.catch(() => {});
+      stream = fromSaavn;
+    } else {
+      stream = await startYouTube();
+    }
     log(`${stream.source} served "${track.title}" in ${Date.now() - t0} ms`);
     cache.set(track.id, { stream, expiresAt: stream.expiresAt });
     return stream;

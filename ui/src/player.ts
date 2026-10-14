@@ -142,10 +142,10 @@ export const usePlayer = create<PlayerState>((set, get) => {
   let lastPrefetch = "";
   audio.addEventListener("timeupdate", () => {
     set({ position: audio.currentTime });
-    // Look up the next song once this one is well underway.
+    // Look up the next song as soon as this one is playing, so Next is instant.
     const { queue, index } = get();
     const next = queue[index + 1];
-    if (next && audio.currentTime > 8 && lastPrefetch !== next.id) {
+    if (next && audio.currentTime > 2 && lastPrefetch !== next.id) {
       lastPrefetch = next.id;
       lookUp(next).catch(() => {});
     }

@@ -12,7 +12,7 @@ let base;
 
 before(async () => {
   dir = await mkdtemp(path.join(tmpdir(), "luma-test-"));
-  server = await startServer({ port: 0, key, dataDir: dir, musicDir: path.join(dir, "music"), log: () => {} });
+  server = await startServer({ port: 0, key, dataDir: dir, musicDir: path.join(dir, "music"), warmUp: false, log: () => {} });
   base = `http://127.0.0.1:${server.port}`;
 });
 after(async () => {
