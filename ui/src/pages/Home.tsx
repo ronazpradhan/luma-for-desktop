@@ -1,9 +1,9 @@
 import { RefreshCw } from "lucide-react";
 import { api, type Track } from "../api";
-import { Art, Failed, MoonPhase, Spinner } from "../components/bits";
+import { Art, Failed, MoonPhase, SkeletonRows, SkeletonShelf } from "../components/bits";
 import { Shelf } from "../components/Shelf";
 import { useLibrary } from "../library";
-import { usePlayer } from "../player";
+import { coolOnLeave, usePlayer, warmOnHover } from "../player";
 import { greeting, useAsync } from "./common";
 
 export function Home() {
@@ -40,7 +40,7 @@ export function Home() {
         {forYou.error && !forYou.data ? (
           <Failed message={forYou.error} onRetry={forYou.reload} />
         ) : !forYou.data ? (
-          <div className="loading-row"><Spinner /></div>
+          <SkeletonRows count={6} />
         ) : (
           <div className={`song-grid ${forYou.loading ? "is-stale" : ""}`}>
             {forYou.data.songs.slice(0, 12).map((t) => <SongCell key={t.id} track={t} />)}
@@ -50,7 +50,7 @@ export function Home() {
 
       {feed.error && !feed.data && <Failed message={feed.error} onRetry={feed.reload} />}
       {feed.data?.shelves.map((s) => <Shelf key={s.title} title={s.title} items={s.items} />)}
-      {feed.loading && !feed.data && <div className="loading-row"><Spinner /></div>}
+      {feed.loading && !feed.data && <><SkeletonShelf /><SkeletonShelf /></>}
     </div>
   );
 }
@@ -61,7 +61,7 @@ function QuickCard({ track }: { track: Track }) {
   const playing = usePlayer((s) => isCurrent && s.playing);
   const progress = usePlayer((s) => (isCurrent && s.duration ? s.position / s.duration : 0));
   return (
-    <button className={`quick ${isCurrent ? "is-current" : ""}`} onClick={() => usePlayer.getState().playTrack(track)}>
+    <button className={`quick ${isCurrent ? "is-current" : ""}`} onClick={() => usePlayer.getState().playTrack(track)} onPointerEnter={() => warmOnHover(track)} onPointerLeave={coolOnLeave}>
       <Art src={track.art} size={56} />
       <span className="quick-text"><b>{track.title}</b><small>{track.artist}</small></span>
       {isCurrent && <MoonPhase progress={progress} playing={playing} size={18} />}
@@ -74,7 +74,7 @@ function SongCell({ track }: { track: Track }) {
   const playing = usePlayer((s) => isCurrent && s.playing);
   const progress = usePlayer((s) => (isCurrent && s.duration ? s.position / s.duration : 0));
   return (
-    <button className={`song-cell ${isCurrent ? "is-current" : ""}`} onClick={() => usePlayer.getState().playTrack(track)}>
+    <button className={`song-cell ${isCurrent ? "is-current" : ""}`} onClick={() => usePlayer.getState().playTrack(track)} onPointerEnter={() => warmOnHover(track)} onPointerLeave={coolOnLeave}>
       <Art src={track.art} size={48} />
       <span className="quick-text"><b>{track.title}</b><small>{track.artist}</small></span>
       {isCurrent && <MoonPhase progress={progress} playing={playing} />}

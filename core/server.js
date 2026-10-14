@@ -10,6 +10,7 @@ import path from "node:path";
 import { Readable } from "node:stream";
 import { timingSafeEqual } from "node:crypto";
 
+import { createInnerTube } from "./innertube.js";
 import { createLyrics } from "./lyrics.js";
 import { createResolver } from "./resolver.js";
 import { createSaavn } from "./saavn.js";
@@ -48,7 +49,7 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
     accountCache = { at: Date.now(), account: a };
     return a;
   }
-  const resolver = createResolver({ saavn, ytdlp, youtubeAuth, tmpDir: path.join(dataDir, "bin"), log });
+  const resolver = createResolver({ saavn, ytdlp, innertube: createInnerTube({ log }), youtubeAuth, tmpDir: path.join(dataDir, "bin"), log });
   const lyrics = createLyrics({ ytmusic, version });
   const downloads = new Map(); // id -> { state, progress, error }
   const images = new Map(); // url -> { type, body } (small LRU)
@@ -319,6 +320,13 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
           throw err;
         });
         return send(res, 200, { source: s.source, codec: s.codec, kbps: s.kbps });
+      }
+      case "POST prefetch": {
+        // Hovering a song: the cheap sources only, so the click finds it ready.
+        const t = track((await body(req)).track);
+        if (store.download(t.id)) return send(res, 200, { ready: true });
+        const s = await resolver.resolve(t, { light: true }).catch(() => null);
+        return send(res, 200, { ready: !!s });
       }
       case "GET library":
         return send(res, 200, libraryView());

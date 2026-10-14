@@ -1,4 +1,5 @@
 import { Download, Heart, ListMusic, Maximize2, Mic2, Pause, Play, Repeat, Repeat1, Shuffle, SkipBack, SkipForward, Volume1, Volume2, VolumeX } from "lucide-react";
+import { useState } from "react";
 import { formatTime } from "../api";
 import { useLibrary } from "../library";
 import { useNav } from "../nav";
@@ -10,8 +11,10 @@ export function Seek({ className = "" }: { className?: string }) {
   const duration = usePlayer((s) => s.duration);
   const seek = usePlayer((s) => s.seek);
   const pct = duration ? (position / duration) * 100 : 0;
+  const [hover, setHover] = useState<{ x: number; t: number } | null>(null);
   return (
     <div className={`seek ${className}`}>
+      {hover && <span className="seek-tip" style={{ left: hover.x }}>{formatTime(hover.t)}</span>}
       <span className="seek-time">{formatTime(position)}</span>
       <input
         type="range"
@@ -22,6 +25,14 @@ export function Seek({ className = "" }: { className?: string }) {
         value={Math.min(position, duration || 0)}
         style={{ ["--fill" as string]: `${pct}%` }}
         onChange={(e) => seek(Number(e.target.value))}
+        onPointerMove={(e) => {
+          if (!duration) return;
+          const r = e.currentTarget.getBoundingClientRect();
+          const f = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+          const parent = e.currentTarget.parentElement!.getBoundingClientRect();
+          setHover({ x: e.clientX - parent.left, t: f * duration });
+        }}
+        onPointerLeave={() => setHover(null)}
         aria-label="Seek"
         disabled={!duration}
       />
@@ -70,17 +81,17 @@ export function PlayerBar() {
       <div className="pb-track">
         {track ? (
           <>
-            <button className="pb-art" onClick={() => p.setNowPlaying(true)} aria-label="Open Now Playing">
+            <button key={track.id} className="pb-art" onClick={() => p.setNowPlaying(true)} aria-label="Open Now Playing">
               <Art src={track.art} size={56} />
               <span className="pb-expand"><Maximize2 size={16} /></span>
             </button>
-            <div className="pb-text">
+            <div key={`t-${track.id}`} className="pb-text">
               <button className="pb-title" onClick={() => p.setNowPlaying(true)}>{track.title}</button>
               <div className="pb-artist">
                 {track.artistId ? <button className="link" onClick={() => go({ name: "artist", id: track.artistId! })}>{track.artist}</button> : track.artist}
               </div>
             </div>
-            <button className={`icon-btn ${liked ? "is-on" : ""}`} onClick={() => lib.toggleLike(track)} aria-label={liked ? "Remove from Liked songs" : "Add to Liked songs"} aria-pressed={liked}>
+            <button className={`icon-btn pb-like ${liked ? "is-on" : ""}`} onClick={() => lib.toggleLike(track)} aria-label={liked ? "Remove from Liked songs" : "Add to Liked songs"} aria-pressed={liked}>
               <Heart size={18} fill={liked ? "currentColor" : "none"} />
             </button>
           </>

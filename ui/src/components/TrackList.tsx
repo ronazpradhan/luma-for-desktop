@@ -2,7 +2,7 @@ import { Download, Heart, MoreHorizontal, Play } from "lucide-react";
 import { formatTime, type Track } from "../api";
 import { useLibrary } from "../library";
 import { useNav } from "../nav";
-import { usePlayer } from "../player";
+import { coolOnLeave, usePlayer, warmOnHover } from "../player";
 import { Art, MoonPhase, Spinner } from "./bits";
 import { useTrackMenu } from "./TrackMenu";
 
@@ -48,6 +48,9 @@ function TrackRow({ track, index, numbered, showArt, showAlbum, playlistId, onPl
       tabIndex={0}
       onClick={(e) => !(e.target as HTMLElement).closest("button") && onPlay()}
       onKeyDown={(e) => e.key === "Enter" && onPlay()}
+      onPointerEnter={() => warmOnHover(track)}
+      onPointerLeave={coolOnLeave}
+      onFocus={() => warmOnHover(track)}
       onContextMenu={(e) => { e.preventDefault(); openMenu(track, e.clientX, e.clientY, playlistId); }}
     >
       <div className="row-lead">

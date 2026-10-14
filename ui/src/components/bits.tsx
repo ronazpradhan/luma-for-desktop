@@ -66,3 +66,38 @@ export function Failed({ message, onRetry }: { message: string; onRetry?: () => 
     </div>
   );
 }
+
+/** Shimmering stand-ins shaped like what is loading: song rows. */
+export function SkeletonRows({ count = 8, art = true }: { count?: number; art?: boolean }) {
+  return (
+    <div className="skeleton-rows" aria-label="Loading" role="status">
+      {Array.from({ length: count }, (_, i) => (
+        <div key={i} className="sk-row" style={{ animationDelay: `${i * 60}ms` }}>
+          {art && <span className="sk sk-art" />}
+          <span className="sk-lines">
+            <span className="sk" style={{ width: `${46 + ((i * 37) % 30)}%` }} />
+            <span className="sk sk-thin" style={{ width: `${24 + ((i * 23) % 18)}%` }} />
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Shimmering stand-ins for a row of tiles. */
+export function SkeletonShelf({ count = 6 }: { count?: number }) {
+  return (
+    <section className="shelf" aria-label="Loading" role="status">
+      <span className="sk sk-title" />
+      <div className="shelf-row">
+        {Array.from({ length: count }, (_, i) => (
+          <div key={i} className="sk-tile" style={{ animationDelay: `${i * 70}ms` }}>
+            <span className="sk sk-square" />
+            <span className="sk" style={{ width: "80%" }} />
+            <span className="sk sk-thin" style={{ width: "55%" }} />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}

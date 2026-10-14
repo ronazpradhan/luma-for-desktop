@@ -46,6 +46,8 @@ type PlayerState = {
 };
 
 const audio = new Audio();
+/** The song clock, read every frame by the lyrics (a store update per frame would be too slow). */
+export const playbackClock = () => ({ time: audio.currentTime, playing: !audio.paused });
 audio.preload = "auto";
 let loadToken = 0;
 const resolved = new Map<string, Promise<Resolved>>();
@@ -257,6 +259,27 @@ export const usePlayer = create<PlayerState>((set, get) => {
     setQueueOpen: (open) => set({ queueOpen: open }),
   };
 });
+
+// ---- ahead of the click ----------------------------------------------------
+// Resting the pointer on a song for a moment starts its lookup (the cheap
+// sources only), so by the time it is clicked it is usually ready to play.
+
+const warmed = new Map<string, number>();
+let hoverTimer: ReturnType<typeof setTimeout> | undefined;
+
+export function warmOnHover(track: Track) {
+  clearTimeout(hoverTimer);
+  const at = warmed.get(track.id);
+  if (at && Date.now() - at < 30 * 60_000) return;
+  hoverTimer = setTimeout(() => {
+    warmed.set(track.id, Date.now());
+    api.prefetch(track).catch(() => warmed.delete(track.id));
+  }, 220);
+}
+
+export function coolOnLeave() {
+  clearTimeout(hoverTimer);
+}
 
 // Windows media keys and the volume flyout's player card.
 function updateSession(t: Track) {

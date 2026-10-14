@@ -46,3 +46,34 @@ test("a slow JioSaavn miss lets the already-running YouTube lookup finish", asyn
   assert.ok(Date.now() - t0 < 1_500, `took ${Date.now() - t0} ms`);
   assert.equal(ytdlp.calls.started, 1);
 });
+
+test("the fast lane serves a song JioSaavn lacks, without starting yt-dlp", async () => {
+  const ytdlp = fakeYt(50);
+  const innertube = { audio: async () => ({ url: "https://rr2.googlevideo.com/videoplayback?expire=9999999999", codec: "opus", kbps: 140, size: 10, userAgent: "ua" }) };
+  const r = createResolver({ saavn: { search: async () => [] }, ytdlp, innertube });
+  const s = await r.resolve(track);
+  assert.equal(s.source, "youtube");
+  assert.equal(s.userAgent, "ua");
+  await wait(900);
+  assert.equal(ytdlp.calls.started, 0);
+});
+
+test("a hover lookup never starts yt-dlp, and the click then does", async () => {
+  const ytdlp = fakeYt(50);
+  const r = createResolver({ saavn: { search: async () => [] }, ytdlp, innertube: { audio: async () => null } });
+  assert.equal(await r.resolve(track, { light: true }), null);
+  await wait(900);
+  assert.equal(ytdlp.calls.started, 0);
+  assert.equal((await r.resolve(track)).source, "youtube");
+  assert.equal(ytdlp.calls.started, 1);
+});
+
+test("a click during a hover lookup takes its answer instead of starting again", async () => {
+  let searches = 0;
+  const r = createResolver({ saavn: { search: async () => { searches++; await wait(200); return [saavnSong]; } }, ytdlp: fakeYt(50) });
+  const hover = r.resolve(track, { light: true });
+  const click = r.resolve(track);
+  assert.equal((await click).source, "jiosaavn");
+  assert.equal((await hover).source, "jiosaavn");
+  assert.equal(searches, 1);
+});

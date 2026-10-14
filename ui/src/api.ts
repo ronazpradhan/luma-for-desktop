@@ -85,6 +85,7 @@ export const api = {
   radio: (id: string) => call<Track[]>("GET", `/api/radio/${id}`),
   lyrics: (t: Track) => call<Lyrics>("POST", "/api/lyrics", { track: slim(t) }),
   resolve: (t: Track) => call<Resolved>("POST", "/api/resolve", { track: slim(t) }),
+  prefetch: (t: Track) => call<{ ready: boolean }>("POST", "/api/prefetch", { track: slim(t) }),
   library: () => call<Library>("GET", "/api/library"),
   like: (t: Track, liked: boolean) => call<Library>("POST", "/api/like", { track: slim(t), liked }),
   recordPlay: (t: Track) => call<{ ok: true }>("POST", "/api/history", { track: slim(t) }),

@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { ChevronLeft, ChevronRight, Play } from "lucide-react";
 import type { Tile, Track } from "../api";
 import { useNav } from "../nav";
-import { usePlayer } from "../player";
+import { coolOnLeave, usePlayer, warmOnHover } from "../player";
 import { Art } from "./bits";
 
 /** A titled row of tiles that scrolls sideways. */
@@ -35,7 +35,7 @@ export function TileCard({ item }: { item: Tile }) {
   };
   const sub = item.kind === "song" ? (item as Track).artist : item.subtitle;
   return (
-    <button className={`tile tile-${item.kind}`} onClick={open}>
+    <button className={`tile tile-${item.kind}`} onClick={open} onPointerEnter={() => item.kind === "song" && warmOnHover(item as Track)} onPointerLeave={coolOnLeave}>
       <div className="tile-art">
         <Art src={item.art} round={item.kind === "artist"} />
         {item.kind !== "artist" && <span className="tile-play" aria-hidden><Play size={18} fill="currentColor" /></span>}

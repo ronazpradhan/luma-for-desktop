@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTint } from "./color";
 import { NowPlaying } from "./components/NowPlaying";
 import { PlayerBar } from "./components/PlayerBar";
@@ -40,13 +40,14 @@ export function App() {
   const tint = useTint(track?.art);
   const route = useNav((s) => s.route);
   const main = useRef<HTMLElement>(null);
+  const [scrolled, setScrolled] = useState(false);
   const load = useLibrary((s) => s.load);
 
   useEffect(() => {
     load().catch(() => {});
     useLibrary.getState().loadYouTube();
   }, [load]);
-  useEffect(() => { main.current?.scrollTo({ top: 0 }); }, [route]);
+  useEffect(() => { main.current?.scrollTo({ top: 0 }); setScrolled(false); }, [route]);
 
   // The song's colour lights the whole window.
   useEffect(() => {
@@ -78,9 +79,9 @@ export function App() {
     <div className={`app ${queueOpen ? "with-queue" : ""}`}>
       <div className="ambient" aria-hidden />
       <Sidebar />
-      <div className="center">
+      <div className={`center ${scrolled ? "is-scrolled" : ""}`}>
         <TopBar />
-        <main className="main" ref={main} key={JSON.stringify(route)}>
+        <main className="main" ref={main} key={JSON.stringify(route)} onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 8)}>
           <Page />
         </main>
       </div>

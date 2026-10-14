@@ -1,6 +1,6 @@
 import { Play, Radio } from "lucide-react";
 import { api, img } from "../api";
-import { Failed, Spinner } from "../components/bits";
+import { Failed, SkeletonRows, SkeletonShelf } from "../components/bits";
 import { Shelf } from "../components/Shelf";
 import { TrackList } from "../components/TrackList";
 import { usePlayer } from "../player";
@@ -9,7 +9,7 @@ import { useAsync } from "./common";
 export function ArtistPage({ id }: { id: string }) {
   const res = useAsync(() => api.artist(id), [id]);
   const player = usePlayer();
-  if (!res.data) return <div className="page">{res.error ? <Failed message={res.error} onRetry={res.reload} /> : <div className="loading-row"><Spinner /></div>}</div>;
+  if (!res.data) return <div className="page">{res.error ? <Failed message={res.error} onRetry={res.reload} /> : <><span className="sk" style={{ height: 300, borderRadius: 18, margin: "8px 0 24px" }} /><SkeletonRows count={5} /><SkeletonShelf /></>}</div>;
   const a = res.data;
   const art = img(a.art);
   return (

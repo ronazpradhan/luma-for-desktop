@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Download, Pencil, Play, Shuffle, Trash2 } from "lucide-react";
 import { api, type Track } from "../api";
-import { Art, Empty, Failed, Spinner } from "../components/bits";
+import { Art, Empty, Failed, SkeletonRows } from "../components/bits";
 import { TrackList } from "../components/TrackList";
 import { useLibrary } from "../library";
 import { useNav } from "../nav";
@@ -51,7 +51,20 @@ function CollectionView({ header, tracks, label, showAlbum = true, numbered = fa
 }
 
 function Loading({ error, reload }: { error: string | null; reload(): void }) {
-  return <div className="page">{error ? <Failed message={error} onRetry={reload} /> : <div className="loading-row"><Spinner /></div>}</div>;
+  if (error) return <div className="page"><Failed message={error} onRetry={reload} /></div>;
+  return (
+    <div className="page">
+      <header className="collection-head">
+        <span className="sk collection-art" />
+        <div className="collection-text" style={{ flex: 1 }}>
+          <span className="sk sk-thin" style={{ width: 80 }} />
+          <span className="sk" style={{ width: "50%", height: 44 }} />
+          <span className="sk sk-thin" style={{ width: 160 }} />
+        </div>
+      </header>
+      <SkeletonRows count={10} />
+    </div>
+  );
 }
 
 export function AlbumPage({ id }: { id: string }) {
