@@ -1,7 +1,7 @@
 {
   "name": "luma-desktop",
   "productName": "LUMA",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "LUMA music player for Windows",
   "author": "Ronaz Pradhan",
   "license": "GPL-3.0-only",

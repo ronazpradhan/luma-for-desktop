@@ -318,6 +318,8 @@ h1, h2, h3, p { margin: 0; }
 
 .settings-group { border-radius: var(--radius-panel); padding: 20px 22px; margin-bottom: 14px; display: grid; gap: 10px; }
 .actions.compact { margin: 4px 0 0; }
+.steps { margin: 2px 0 0; padding-left: 20px; display: grid; gap: 6px; color: var(--moon); line-height: 1.5; }
+.steps li::marker { color: var(--accent); font-weight: 700; }
 .problem { color: #ffc2b6; }
 .account { display: flex; align-items: center; gap: 12px; margin: 4px 0 2px; }
 .account > span { display: grid; }

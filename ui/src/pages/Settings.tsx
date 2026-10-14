@@ -5,7 +5,9 @@ import { useLibrary } from "../library";
 import { useAsync } from "./common";
 import { Art } from "../components/bits";
 
-const BROWSER_NAMES: Record<string, string> = { firefox: "Firefox", edge: "Edge", chrome: "Chrome", brave: "Brave" };
+const BROWSER_NAMES: Record<string, string> = { firefox: "Firefox" };
+/** The open-source exporter yt-dlp recommends (Chrome Web Store; works in Edge and Brave too). */
+const EXTENSION_URL = "https://chrome.google.com/webstore/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc";
 
 export function Settings() {
   const autoplay = useLibrary((s) => s.settings.autoplay);
@@ -85,20 +87,29 @@ export function Settings() {
         {!bridge && <p className="muted small">Open the LUMA app to sign in.</p>}
         {bridge && !yt?.signedIn && yt?.canSignIn !== false && (
           <>
-            <p className="muted small">
-              Sign in to music.youtube.com in your browser first, then pick that browser. LUMA copies only the YouTube sign-in, keeps it encrypted on this PC, and never sees your password.
-            </p>
+            <ol className="steps">
+              <li>
+                In your browser, add the free <b>Get cookies.txt LOCALLY</b> extension.{" "}
+                <a className="link strong" href={EXTENSION_URL} target="_blank" rel="noreferrer">Get it</a>
+              </li>
+              <li>Open a private window (Ctrl+Shift+N), go to music.youtube.com and sign in.</li>
+              <li>Click the extension, then <b>Export</b>. It saves a .txt file.</li>
+              <li>Close the private window, then choose that file here.</li>
+            </ol>
             <div className="actions compact">
+              <button className="btn btn-primary" disabled={!!busy} onClick={() => connect("file", () => bridge.youtubeFromFile())}>
+                {busy === "file" ? "Checking with YouTube" : "Choose cookies file"}
+              </button>
               {browsers.map((b) => (
                 <button key={b} className="btn" disabled={!!busy} onClick={() => connect(b, () => bridge.youtubeFromBrowser(b))}>
-                  {busy === b ? `Reading ${BROWSER_NAMES[b]}` : `Use ${BROWSER_NAMES[b] ?? b}`}
+                  {busy === b ? `Reading ${BROWSER_NAMES[b]}` : `Use ${BROWSER_NAMES[b] ?? b}'s sign-in`}
                 </button>
               ))}
-              <button className="btn btn-quiet" disabled={!!busy} onClick={() => connect("file", () => bridge.youtubeFromFile())}>
-                Choose a cookies file
-              </button>
             </div>
             {problem && <p className="problem">{problem}</p>}
+            <p className="muted small">
+              LUMA keeps only the YouTube sign-in from the file, encrypted on this PC, and never sees your password. Delete the .txt file afterwards. A private window keeps this sign-in separate from your everyday browsing, so it lasts longer.
+            </p>
           </>
         )}
         {yt?.canSignIn === false && <p className="muted small">Windows can't protect saved sign-ins on this PC, so LUMA can't keep one.</p>}

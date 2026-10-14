@@ -388,8 +388,15 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
    */
   async function adoptJar(cookies, notSignedIn) {
     if (!isSignedInJar(cookies)) throw new Error(notSignedIn);
-    const who = await createYtMusic({ auth: () => sessionHeaders(cookies) }).account().catch(() => null);
+    const probe = createYtMusic({ auth: () => sessionHeaders(cookies) });
+    let who = await probe.account().catch(() => null);
     if (!who?.name) {
+      // Whatever the account menu looks like this week, a session that opens your
+      // own playlists is signed in.
+      const mine = await probe.libraryPlaylists().catch(() => []);
+      if (mine.length > 1) who = { name: null, handle: null, photo: null };
+    }
+    if (!who) {
       throw new Error("YouTube doesn't accept that sign-in any more. Sign in again at music.youtube.com in that browser, then try again.");
     }
     await youtubeAuth.set(cookies);

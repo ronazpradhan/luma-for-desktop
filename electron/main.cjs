@@ -116,11 +116,10 @@ async function start() {
 
 // A browser counts only when it is installed: a profile folder left behind by
 // an uninstalled one holds an old sign-in, maybe someone else's.
+// Only Firefox: Chrome, Edge and Brave now lock their sign-ins with encryption
+// only the browser itself can open, so no other program can read them.
 const BROWSER_EXES = {
   firefox: ["Mozilla Firefox", "firefox.exe"],
-  edge: ["Microsoft", "Edge", "Application", "msedge.exe"],
-  chrome: ["Google", "Chrome", "Application", "chrome.exe"],
-  brave: ["BraveSoftware", "Brave-Browser", "Application", "brave.exe"],
 };
 
 function installedBrowsers() {
