@@ -1,5 +1,6 @@
 import { Download, Heart, Plus } from "lucide-react";
 import { Art, Empty } from "../components/bits";
+import { Shelf } from "../components/Shelf";
 import { TrackList } from "../components/TrackList";
 import { useLibrary } from "../library";
 import { useNav } from "../nav";
@@ -38,6 +39,7 @@ export function LibraryPage() {
           </button>
         </div>
       </section>
+      {lib.youtubePlaylists.length > 0 && <Shelf title="From YouTube Music" items={lib.youtubePlaylists} />}
       <section className="block">
         <h2 className="block-title">History</h2>
         {lib.history.length ? <TrackList tracks={lib.history.slice(0, 40).map((h) => h.track)} single /> : <Empty title="Nothing played yet">Songs you play show up here.</Empty>}

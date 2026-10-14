@@ -42,7 +42,10 @@ export function App() {
   const main = useRef<HTMLElement>(null);
   const load = useLibrary((s) => s.load);
 
-  useEffect(() => { load().catch(() => {}); }, [load]);
+  useEffect(() => {
+    load().catch(() => {});
+    useLibrary.getState().loadYouTube();
+  }, [load]);
   useEffect(() => { main.current?.scrollTo({ top: 0 }); }, [route]);
 
   // The song's colour lights the whole window.

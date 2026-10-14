@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { api } from "../api";
+import { api, type SignInResult } from "../api";
 import { toast } from "../toast";
 import { useLibrary } from "../library";
 import { useAsync } from "./common";
+import { Art } from "../components/bits";
 
 const BROWSER_NAMES: Record<string, string> = { firefox: "Firefox", edge: "Edge", chrome: "Chrome", brave: "Brave" };
 
@@ -20,14 +21,15 @@ export function Settings() {
     bridge?.youtubeBrowsers().then(setBrowsers).catch(() => {});
   }, [bridge]);
 
-  async function connect(id: string, job: () => Promise<{ ok: boolean; error?: string; cancelled?: boolean }>) {
+  async function connect(id: string, job: () => Promise<SignInResult>) {
     setBusy(id);
     setProblem(null);
     try {
       const r = await job();
       if (r.ok) {
-        toast("Signed in to YouTube");
+        toast(r.ok.name ? `Connected YouTube as ${r.ok.name}` : "Connected YouTube");
         status.reload();
+        useLibrary.getState().loadYouTube();
       } else if (!r.cancelled) setProblem(r.error ?? "That didn't work.");
     } finally {
       setBusy(null);
@@ -37,8 +39,9 @@ export function Settings() {
   async function signOut() {
     if (!bridge) return;
     await bridge.youtubeSignOut();
-    toast("Signed out of YouTube");
+    toast("Disconnected YouTube");
     status.reload();
+    useLibrary.setState({ youtubePlaylists: [] });
   }
 
   return (
@@ -60,13 +63,24 @@ export function Settings() {
         <div className="account-row">
           <span>
             <h2>YouTube</h2>
+            {yt?.signedIn && (
+              <span className="account">
+                {yt.account?.photo && <Art src={yt.account.photo} size={36} round />}
+                <span>
+                  <b>{yt.account?.name ?? "Connected"}</b>
+                  {yt.account?.handle && <small>{yt.account.handle}</small>}
+                </span>
+              </span>
+            )}
             <p>
               {yt?.signedIn
-                ? "Signed in. Songs that aren't on JioSaavn play from YouTube with your account, like LUMA on your phone."
-                : "Songs that aren't on JioSaavn play from YouTube, and on some connections YouTube only allows that when you're signed in."}
+                ? yt.account
+                  ? "Your YouTube Music likes and playlists are in your Library, and songs that aren't on JioSaavn play from YouTube with this account."
+                  : "This sign-in no longer works with YouTube. Disconnect it and connect again."
+                : "Connect your YouTube account to see your YouTube Music likes and playlists here, and to play songs that aren't on JioSaavn."}
             </p>
           </span>
-          {yt?.signedIn && <button className="btn" onClick={signOut}>Sign out</button>}
+          {yt?.signedIn && <button className="btn" onClick={signOut}>Disconnect</button>}
         </div>
         {!bridge && <p className="muted small">Open the LUMA app to sign in.</p>}
         {bridge && !yt?.signedIn && yt?.canSignIn !== false && (

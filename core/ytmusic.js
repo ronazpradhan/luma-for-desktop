@@ -16,8 +16,14 @@ const FILTER = {
   artists: "EgWKAQIgAWoMEA4QChADEAQQCRAF",
 };
 
-export function createYtMusic({ fetchImpl = fetch, hl = "en", gl = "US" } = {}) {
-  async function call(endpoint, body, query = "") {
+/**
+ * [auth] returns the signed-in session's request headers, or null when signed
+ * out. Signed in, the home feed is yours and your library is reachable.
+ */
+export function createYtMusic({ fetchImpl = fetch, hl = "en", gl = "US", auth = () => null } = {}) {
+  async function call(endpoint, body, query = "", { signed = false } = {}) {
+    const session = signed ? auth() : null;
+    if (signed === "required" && !session) throw Object.assign(new Error("Connect YouTube in Settings first."), { code: "YOUTUBE_SIGNIN" });
     const res = await fetchImpl(`${BASE}/${endpoint}?prettyPrint=false${query}`, {
       method: "POST",
       headers: {
@@ -25,15 +31,58 @@ export function createYtMusic({ fetchImpl = fetch, hl = "en", gl = "US" } = {}) 
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36",
         Origin: "https://music.youtube.com",
         Referer: "https://music.youtube.com/",
+        ...(session ?? {}),
       },
       body: JSON.stringify({ ...body, context: { client: { clientName: "WEB_REMIX", clientVersion: clientVersion(), hl, gl } } }),
       signal: AbortSignal.timeout(12_000),
     });
+    if ((res.status === 401 || res.status === 403) && session) {
+      throw Object.assign(new Error("Your YouTube sign-in has expired. Connect YouTube again in Settings."), { code: "YOUTUBE_SIGNIN" });
+    }
     if (!res.ok) throw new Error(`YouTube Music ${endpoint} answered ${res.status}`);
     return res.json();
   }
 
+  /** Every song of a playlist page, following its continuations (up to [cap]). */
+  async function allPlaylistTracks(first, cap = 2000) {
+    const shelf = findKey(first, "musicPlaylistShelfRenderer") ?? findKey(first, "musicShelfRenderer");
+    const tracks = [];
+    let rows = shelf?.contents ?? [];
+    let token = nextToken(shelf, rows);
+    for (;;) {
+      tracks.push(...rows.map((c) => parseSongRow(c)).filter(Boolean));
+      if (!token || tracks.length >= cap) break;
+      const more = await call("browse", { continuation: token }, "", { signed: true }).catch(() => null);
+      const appended = more?.onResponseReceivedActions?.[0]?.appendContinuationItemsAction?.continuationItems;
+      const legacy = more?.continuationContents?.musicPlaylistShelfContinuation;
+      rows = appended ?? legacy?.contents ?? [];
+      token = nextToken(legacy, rows);
+    }
+    return tracks.slice(0, cap);
+  }
+
   return {
+    /** Who is signed in, as YouTube shows it: name, handle and photo. */
+    async account() {
+      const json = await call("account/account_menu", {}, "", { signed: "required" });
+      const header = findKey(json, "activeAccountHeaderRenderer");
+      if (!header) return null;
+      return {
+        name: runsText(header.accountName?.runs),
+        handle: runsText(header.channelHandle?.runs) || null,
+        photo: bestThumb(header.accountPhoto?.thumbnails),
+      };
+    },
+
+    /** Your playlists in YouTube Music's library, with Liked music first. */
+    async libraryPlaylists() {
+      const json = await call("browse", { browseId: "FEmusic_liked_playlists" }, "", { signed: "required" });
+      const grid = findKey(json, "gridRenderer");
+      const tiles = (grid?.items ?? []).map(parseTile).filter((t) => t?.kind === "playlist");
+      const liked = tiles.find((t) => t.id === "LM") ?? { kind: "playlist", id: "LM", title: "Liked music", subtitle: "Auto playlist", art: null };
+      return [liked, ...tiles.filter((t) => t.id !== "LM")];
+    },
+
     async search(query) {
       const [songs, albums, artists] = await Promise.all([
         call("search", { query, params: FILTER.songs }),
@@ -60,12 +109,17 @@ export function createYtMusic({ fetchImpl = fetch, hl = "en", gl = "US" } = {}) 
     },
 
     async home() {
-      const first = await call("browse", { browseId: "FEmusic_home" });
+      // Signed in, the feed is yours; an expired session falls back to the public one.
+      const signed = !!auth();
+      const first = await call("browse", { browseId: "FEmusic_home" }, "", { signed }).catch((e) => {
+        if (signed && e.code === "YOUTUBE_SIGNIN") return call("browse", { browseId: "FEmusic_home" });
+        throw e;
+      });
       const list = first.contents?.singleColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer;
       let sections = list?.contents ?? [];
       const token = list?.continuations?.[0]?.nextContinuationData?.continuation;
       if (token) {
-        const more = await call("browse", {}, `&ctoken=${encodeURIComponent(token)}&continuation=${encodeURIComponent(token)}&type=next`).catch(() => null);
+        const more = await call("browse", {}, `&ctoken=${encodeURIComponent(token)}&continuation=${encodeURIComponent(token)}&type=next`, { signed }).catch(() => null);
         sections = sections.concat(more?.continuationContents?.sectionListContinuation?.contents ?? []);
       }
       return sections.map(parseCarousel).filter((s) => s && s.items.length);
@@ -112,16 +166,16 @@ export function createYtMusic({ fetchImpl = fetch, hl = "en", gl = "US" } = {}) 
 
     async playlist(playlistId) {
       const browseId = playlistId.startsWith("VL") ? playlistId : `VL${playlistId}`;
-      const json = await call("browse", { browseId });
-      const header = findKey(json, "musicResponsiveHeaderRenderer") ?? findKey(json, "musicDetailHeaderRenderer");
+      // Your own and private playlists (Liked music is "LM") need the session.
+      const json = await call("browse", { browseId }, "", { signed: playlistId === "LM" ? "required" : true });
+      const header = findKey(json, "musicResponsiveHeaderRenderer") ?? findKey(json, "musicDetailHeaderRenderer") ?? findKey(json, "musicEditablePlaylistDetailHeaderRenderer");
       const art = bestThumb(findKey(header, "thumbnails"));
-      const shelf = findKey(json, "musicPlaylistShelfRenderer") ?? findKey(json, "musicShelfRenderer");
       return {
         id: playlistId,
-        title: runsText(header?.title?.runs),
+        title: runsText(header?.title?.runs) || (playlistId === "LM" ? "Liked music" : ""),
         subtitle: runsText(header?.subtitle?.runs) || runsText(header?.secondSubtitle?.runs),
         art,
-        tracks: (shelf?.contents ?? []).map((c) => parseSongRow(c)).filter(Boolean),
+        tracks: await allPlaylistTracks(json),
       };
     },
 
@@ -165,6 +219,14 @@ export function bestThumb(thumbs) {
   const url = Array.isArray(thumbs) && thumbs.length ? thumbs[thumbs.length - 1].url : null;
   if (!url) return null;
   return /googleusercontent\.com|ggpht\.com/.test(url) ? url.replace(/=w\d+-h\d+.*$/, "=w544-h544-l90-rj") : url;
+}
+
+/** The next page's token of a playlist shelf, in either of YouTube's two shapes. */
+function nextToken(shelf, rows) {
+  const legacy = shelf?.continuations?.[0]?.nextContinuationData?.continuation;
+  if (legacy) return legacy;
+  const last = rows?.[rows.length - 1]?.continuationItemRenderer;
+  return last?.continuationEndpoint?.continuationCommand?.token ?? null;
 }
 
 function shelfItems(json) {

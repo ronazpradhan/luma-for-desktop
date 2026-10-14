@@ -34,7 +34,8 @@ export type Lyrics = { synced: boolean; lines: { time: number | null; text: stri
 export type Resolved = { source: "jiosaavn" | "youtube" | "download"; codec: string; kbps?: number | null };
 export type DownloadState = Record<string, { state: "running" | "done" | "failed"; progress: number; error?: string }>;
 
-export type SignInResult = { ok: boolean; error?: string; cancelled?: boolean };
+export type YouTubeAccount = { name: string | null; handle: string | null; photo: string | null };
+export type SignInResult = { ok: YouTubeAccount | false; error?: string; cancelled?: boolean };
 
 declare global {
   interface Window {
@@ -72,7 +73,8 @@ export function slim(t: Track): Track {
 }
 
 export const api = {
-  status: () => call<{ version: string; ytdlp: string; youtube: { signedIn: boolean; canSignIn: boolean } }>("GET", "/api/status"),
+  status: () => call<{ version: string; ytdlp: string; youtube: { signedIn: boolean; canSignIn: boolean; account: YouTubeAccount | null } }>("GET", "/api/status"),
+  youtubeLibrary: () => call<{ playlists: Tile[] }>("GET", "/api/youtube/library"),
   home: () => call<{ shelves: Shelf[] }>("GET", "/api/home"),
   forYou: () => call<{ basedOn: string | null; songs: Track[] }>("GET", "/api/foryou"),
   search: (q: string) => call<SearchResults>("GET", `/api/search?q=${encodeURIComponent(q)}`),

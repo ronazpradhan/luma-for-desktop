@@ -7,6 +7,7 @@ export function Sidebar() {
   const route = useNav((s) => s.route);
   const go = useNav((s) => s.go);
   const playlists = useLibrary((s) => s.playlists);
+  const ytPlaylists = useLibrary((s) => s.youtubePlaylists);
   const likes = useLibrary((s) => s.likes.length);
   const createPlaylist = useLibrary((s) => s.createPlaylist);
 
@@ -44,6 +45,12 @@ export function Sidebar() {
             <span className="side-icon"><Download size={15} /></span>
             <span className="side-text"><b>Downloads</b><small>On this PC</small></span>
           </button>
+          {ytPlaylists.map((p) => (
+            <button key={`yt-${p.id}`} className={`side-row ${route.name === "ytplaylist" && route.id === p.id ? "is-active" : ""}`} onClick={() => go({ name: "ytplaylist", id: p.id })}>
+              {p.id === "LM" ? <span className="side-icon yt"><Heart size={15} fill="currentColor" /></span> : <Art src={p.art} size={36} />}
+              <span className="side-text"><b>{p.title}</b><small>YouTube Music</small></span>
+            </button>
+          ))}
           {playlists.map((p) => (
             <button key={p.id} className={`side-row ${route.name === "playlist" && route.id === p.id ? "is-active" : ""}`} onClick={() => go({ name: "playlist", id: p.id })}>
               <Art src={p.art} size={36} />

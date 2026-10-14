@@ -16,7 +16,7 @@ import { createSaavn } from "./saavn.js";
 import { cleanTrack, openStore } from "./store.js";
 import { createYtDlp } from "./ytdlp.js";
 import { createYtMusic } from "./ytmusic.js";
-import { isSignedInJar, openYouTubeAuth, parseNetscape } from "./youtube-auth.js";
+import { isSignedInJar, openYouTubeAuth, parseNetscape, sessionHeaders } from "./youtube-auth.js";
 
 const VIDEO_ID = /^[A-Za-z0-9_-]{11}$/;
 const BROWSE_ID = /^[A-Za-z0-9_-]{2,80}$/;
@@ -35,10 +35,19 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
   if (!key || key.length < 32) throw new Error("LUMA needs a long random key");
   const keyBuf = Buffer.from(key);
   const store = await openStore(dataDir);
-  const ytmusic = createYtMusic();
+
   const saavn = createSaavn();
   const ytdlp = createYtDlp({ binDir: path.join(dataDir, "bin"), log });
   const youtubeAuth = await openYouTubeAuth({ dataDir, vault });
+  const ytmusic = createYtMusic({ auth: () => youtubeAuth.headers() });
+  let accountCache = null; // { at, account }
+  async function account() {
+    if (!youtubeAuth.signedIn()) return null;
+    if (accountCache && Date.now() - accountCache.at < 10 * 60_000) return accountCache.account;
+    const a = await ytmusic.account().catch(() => null);
+    accountCache = { at: Date.now(), account: a };
+    return a;
+  }
   const resolver = createResolver({ saavn, ytdlp, youtubeAuth, tmpDir: path.join(dataDir, "bin"), log });
   const lyrics = createLyrics({ ytmusic, version });
   const downloads = new Map(); // id -> { state, progress, error }
@@ -272,7 +281,7 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
 
     switch (`${m} ${seg[0]}${seg.length > 2 ? `/${seg[2]}` : ""}`) {
       case "GET status":
-        return send(res, 200, { version, ytdlp: await ytdlp.version().catch((e) => `unavailable: ${e.message}`), youtube: { signedIn: youtubeAuth.signedIn(), canSignIn: !!vault } });
+        return send(res, 200, { version, ytdlp: await ytdlp.version().catch((e) => `unavailable: ${e.message}`), youtube: { signedIn: youtubeAuth.signedIn(), canSignIn: !!vault, account: await account() } });
       case "GET home":
         return send(res, 200, { shelves: await ytmusic.home() });
       case "GET foryou":
@@ -292,6 +301,10 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
         return send(res, 200, await ytmusic.artist(needId()));
       case "GET ytplaylist":
         return send(res, 200, await ytmusic.playlist(needId()));
+      case "GET youtube":
+        if (id === "account") return send(res, 200, { account: await account() });
+        if (id === "library") return send(res, 200, { playlists: await ytmusic.libraryPlaylists() });
+        throw new HttpError(404, "not found");
       case "GET radio":
         return send(res, 200, await ytmusic.radio(needId(VIDEO_ID)));
       case "POST lyrics":
@@ -368,11 +381,21 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
     }
   }
 
+  /**
+   * Keeps [cookies] only if YouTube itself says who they belong to: an old or
+   * signed-out jar (a profile left by an uninstalled browser, say) is turned
+   * down, and whatever was connected before stays connected.
+   */
   async function adoptJar(cookies, notSignedIn) {
     if (!isSignedInJar(cookies)) throw new Error(notSignedIn);
+    const who = await createYtMusic({ auth: () => sessionHeaders(cookies) }).account().catch(() => null);
+    if (!who?.name) {
+      throw new Error("YouTube doesn't accept that sign-in any more. Sign in again at music.youtube.com in that browser, then try again.");
+    }
     await youtubeAuth.set(cookies);
+    accountCache = { at: Date.now(), account: who };
     resolver.forgetYouTube();
-    return true;
+    return who;
   }
 
   const server = http.createServer((req, res) => {
@@ -413,6 +436,7 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
     async signOutYouTube() {
       await youtubeAuth.clear();
       resolver.forgetYouTube();
+      accountCache = null;
     },
     async close() {
       await store.flush().catch(() => {});

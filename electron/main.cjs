@@ -114,15 +114,20 @@ async function start() {
 
 // ---- YouTube sign-in --------------------------------------------------------
 
-const BROWSER_DIRS = {
-  firefox: () => path.join(app.getPath("appData"), "Mozilla", "Firefox", "Profiles"),
-  edge: () => path.join(process.env.LOCALAPPDATA ?? "", "Microsoft", "Edge", "User Data"),
-  chrome: () => path.join(process.env.LOCALAPPDATA ?? "", "Google", "Chrome", "User Data"),
-  brave: () => path.join(process.env.LOCALAPPDATA ?? "", "BraveSoftware", "Brave-Browser", "User Data"),
+// A browser counts only when it is installed: a profile folder left behind by
+// an uninstalled one holds an old sign-in, maybe someone else's.
+const BROWSER_EXES = {
+  firefox: ["Mozilla Firefox", "firefox.exe"],
+  edge: ["Microsoft", "Edge", "Application", "msedge.exe"],
+  chrome: ["Google", "Chrome", "Application", "chrome.exe"],
+  brave: ["BraveSoftware", "Brave-Browser", "Application", "brave.exe"],
 };
 
 function installedBrowsers() {
-  return Object.entries(BROWSER_DIRS).filter(([, dir]) => fs.existsSync(dir())).map(([id]) => id);
+  const roots = [process.env.ProgramFiles, process.env["ProgramFiles(x86)"], process.env.LOCALAPPDATA, "C:/Program Files", "C:/Program Files (x86)"].filter(Boolean);
+  return Object.entries(BROWSER_EXES)
+    .filter(([, parts]) => roots.some((root) => fs.existsSync(path.join(root, ...parts))))
+    .map(([id]) => id);
 }
 
 async function outcome(job) {

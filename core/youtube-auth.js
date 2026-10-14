@@ -3,7 +3,7 @@
 // (Electron safeStorage), handed to yt-dlp one play at a time through a
 // short-lived file only this user can read.
 
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { chmod, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -38,6 +38,8 @@ export async function openYouTubeAuth({ dataDir, vault = null }) {
       cookies = null;
       await rm(file, { force: true });
     },
+
+    headers: (origin) => sessionHeaders(cookies, origin),
 
     /**
      * Runs [fn] with a Netscape cookie file for yt-dlp, deleted afterwards, or
@@ -87,4 +89,22 @@ export function netscape(cookies) {
     lines.push([domain, domain.startsWith(".") ? "TRUE" : "FALSE", c.path || "/", c.secure ? "TRUE" : "FALSE", expires, c.name, c.value].join("\t"));
   }
   return `${lines.join("\n")}\n`;
+}
+
+/**
+ * What YouTube Music's web player sends when signed in: the youtube.com
+ * cookies and the SAPISIDHASH that proves them (as LUMA for Android does).
+ */
+export function sessionHeaders(cookies, origin = "https://music.youtube.com") {
+  const yt = (cookies ?? []).filter((c) => /(^|\.)youtube\.com$/.test(c.domain.replace(/^\./, "")));
+  const sapisid = yt.find((c) => c.name === "SAPISID")?.value ?? yt.find((c) => c.name === "__Secure-3PAPISID")?.value;
+  if (!sapisid) return null;
+  const ts = Math.floor(Date.now() / 1000);
+  const hash = createHash("sha1").update(`${ts} ${sapisid} ${origin}`).digest("hex");
+  return {
+    Cookie: yt.map((c) => `${c.name}=${c.value}`).join("; "),
+    Authorization: `SAPISIDHASH ${ts}_${hash}`,
+    "X-Origin": origin,
+    "X-Goog-AuthUser": "0",
+  };
 }

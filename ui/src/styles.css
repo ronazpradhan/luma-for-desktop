@@ -319,6 +319,10 @@ h1, h2, h3, p { margin: 0; }
 .settings-group { border-radius: var(--radius-panel); padding: 20px 22px; margin-bottom: 14px; display: grid; gap: 10px; }
 .actions.compact { margin: 4px 0 0; }
 .problem { color: #ffc2b6; }
+.account { display: flex; align-items: center; gap: 12px; margin: 4px 0 2px; }
+.account > span { display: grid; }
+.account small { color: var(--haze); font-size: 12.5px; }
+.side-icon.yt { background: linear-gradient(135deg, #ff4e45, #a1132c); color: #fff; }
 .account-row { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
 .account-row > span { display: grid; gap: 6px; }
 .settings-group h2 { font-size: 16px; font-weight: 700; }

@@ -1,11 +1,14 @@
 // The library as the window sees it, kept in step with the engine.
 
 import { create } from "zustand";
-import { api, type DownloadState, type Library, type Track } from "./api";
+import { api, type DownloadState, type Library, type Tile, type Track } from "./api";
 import { toast } from "./toast";
 
 type LibraryState = Library & {
   loaded: boolean;
+  /** Your playlists in YouTube Music (Liked music first), when YouTube is connected. */
+  youtubePlaylists: Tile[];
+  loadYouTube(): Promise<void>;
   downloadState: DownloadState;
   load(): Promise<void>;
   refreshSoon(): void;
@@ -49,6 +52,12 @@ export const useLibrary = create<LibraryState>((set, get) => {
     settings: { autoplay: true, volume: 0.8 },
     loaded: false,
     downloadState: {},
+    youtubePlaylists: [],
+
+    async loadYouTube() {
+      const r = await api.youtubeLibrary().catch(() => null);
+      set({ youtubePlaylists: r?.playlists ?? [] });
+    },
 
     async load() {
       apply(await api.library());
