@@ -1,7 +1,7 @@
 {
   "name": "luma-desktop",
   "productName": "LUMA",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "LUMA music player for Windows",
   "author": "Ronaz Pradhan",
   "license": "GPL-3.0-only",
@@ -19,7 +19,8 @@
     "dist": "npm run build:ui && electron-builder --win"
   },
   "dependencies": {
-    "des.js": "^1.1.0"
+    "des.js": "^1.1.0",
+    "youtubei.js": "^18.1.0"
   },
   "devDependencies": {
     "@fontsource-variable/plus-jakarta-sans": "^5.3.0",

@@ -9,8 +9,10 @@ const SAAVN_TTL_MS = 6 * 3_600_000;
 const YT_FALLBACK_TTL_MS = 5 * 3_600_000;
 /** yt-dlp never starts before this, so a JioSaavn answer (0.2-0.6 s) can still win. */
 const HEDGE_MS = 700;
+/** How long a ready YouTube link waits for a JioSaavn answer still on its way. */
+const SAAVN_GRACE_MS = 250;
 
-export function createResolver({ saavn, ytdlp, innertube = null, youtubeAuth = null, tmpDir = null, log = () => {} }) {
+export function createResolver({ saavn, ytdlp, innertube = null, mobileWeb = null, youtubeAuth = null, tmpDir = null, log = () => {} }) {
   const cache = new Map(); // video id -> { stream, expiresAt }
   const inFlight = new Map(); // video id -> { light, job }
 
@@ -41,10 +43,21 @@ export function createResolver({ saavn, ytdlp, innertube = null, youtubeAuth = n
     return { source: "youtube", url: a.url, codec: a.codec, kbps: a.kbps, size: a.size, userAgent: a.userAgent, expiresAt: expire || Date.now() + YT_FALLBACK_TTL_MS };
   }
 
+  /** YouTube's app clients first (Android's fast lane), then its mobile website (Spotube's way). */
   async function viaFastLane(track, signal) {
-    if (!innertube) return null;
-    const a = await innertube.audio(track.id, { signal });
-    return a ? youTubeStream(a) : null;
+    // Both at once: the app clients' Opus is preferred, but the mobile website
+    // doesn't wait for them to be turned away.
+    const quiet = (job) => job.catch((e) => {
+      if (signal?.aborted) throw e;
+      return null;
+    });
+    const apps = innertube ? quiet(innertube.audio(track.id, { signal })) : Promise.resolve(null);
+    const web = mobileWeb ? quiet(mobileWeb.audio(track.id, { signal })) : Promise.resolve(null);
+    const first = await Promise.race([apps.then((a) => ({ from: "apps", a })), web.then((a) => ({ from: "web", a }))]);
+    let pick;
+    if (first.from === "apps") pick = first.a ?? (await web);
+    else pick = (await Promise.race([apps, new Promise((r) => setTimeout(() => r(undefined), 150))])) || first.a || (await apps);
+    return pick ? youTubeStream(pick) : null;
   }
 
   async function viaYtDlp(track, signal) {
@@ -87,8 +100,18 @@ export function createResolver({ saavn, ytdlp, innertube = null, youtubeAuth = n
       setTimeout(() => saavnSettled !== "hit" && startYtDlp()?.catch(() => {}), wait);
     });
 
-    let stream = await saavnJob;
-    if (!stream) stream = await fastJob;
+    // Whichever answers first; a ready YouTube link waits only SAAVN_GRACE_MS for
+    // JioSaavn (as on Android), which is preferred when it does answer in time.
+    const first = await Promise.race([saavnJob.then((s) => ({ from: "saavn", s })), fastJob.then((s) => ({ from: "fast", s }))]);
+    let stream;
+    if (first.from === "saavn") {
+      stream = first.s ?? (await fastJob);
+    } else if (first.s) {
+      const late = await Promise.race([saavnJob, new Promise((r) => setTimeout(() => r(null), SAAVN_GRACE_MS))]);
+      stream = late ?? first.s;
+    } else {
+      stream = (await saavnJob) ?? null;
+    }
     if (stream) {
       stop.abort();
       ytdlpJob?.catch(() => {});

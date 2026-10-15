@@ -11,6 +11,7 @@ import { Readable } from "node:stream";
 import { timingSafeEqual } from "node:crypto";
 
 import { createInnerTube } from "./innertube.js";
+import { createYtJs } from "./ytjs.js";
 import { createLyrics } from "./lyrics.js";
 import { createResolver } from "./resolver.js";
 import { createSaavn } from "./saavn.js";
@@ -49,7 +50,8 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
     accountCache = { at: Date.now(), account: a };
     return a;
   }
-  const resolver = createResolver({ saavn, ytdlp, innertube: createInnerTube({ log }), youtubeAuth, tmpDir: path.join(dataDir, "bin"), log });
+  const mobileWeb = createYtJs({ log });
+  const resolver = createResolver({ saavn, ytdlp, innertube: createInnerTube({ log }), mobileWeb, youtubeAuth, tmpDir: path.join(dataDir, "bin"), log });
   const lyrics = createLyrics({ ytmusic, version });
   const downloads = new Map(); // id -> { state, progress, error }
   const images = new Map(); // url -> { type, body } (small LRU)
@@ -426,7 +428,10 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
   actualPort = server.address().port;
   log(`LUMA engine on http://127.0.0.1:${actualPort}`);
   // Install or update yt-dlp now, not during the first song that needs YouTube.
-  if (warmUp) ytdlp.version().catch((e) => log(`yt-dlp not ready: ${e.message}`));
+  if (warmUp) {
+    ytdlp.version().catch((e) => log(`yt-dlp not ready: ${e.message}`));
+    mobileWeb.warmUp();
+  }
 
   return {
     port: actualPort,

@@ -117,7 +117,7 @@ export function Settings() {
 
       <section className="settings-group glass">
         <h2>Where songs come from</h2>
-        <p>LUMA looks for each song on JioSaavn first (AAC, up to 320 kbps). Songs JioSaavn doesn't have play from YouTube. Downloads are saved to the LUMA folder in your Music folder and play without internet.</p>
+        <p>LUMA looks for each song on JioSaavn (AAC, up to 320 kbps) and YouTube at the same time, and plays whichever is ready first, preferring JioSaavn. Some YouTube songs come at lower quality (AAC 96) when YouTube only offers that without a sign-in; connecting YouTube below lets yt-dlp step in when neither has a song. Downloads are saved to the LUMA folder in your Music folder and play without internet.</p>
       </section>
       <section className="settings-group glass">
         <h2>About</h2>
@@ -125,7 +125,7 @@ export function Settings() {
           <dt>LUMA for Windows</dt><dd>{status.data?.version ?? "…"}</dd>
           <dt>YouTube helper (yt-dlp)</dt><dd>{status.data?.ytdlp ?? "…"}</dd>
         </dl>
-        <p className="muted small">Made by Ronaz Pradhan. LUMA for Android is a fork of Stash by rawnaldclark (GPL-3.0). Lyrics from LRCLIB.</p>
+        <p className="muted small">Made by Ronaz Pradhan. LUMA for Android is a fork of Stash by rawnaldclark (GPL-3.0). YouTube playback follows Spotube's approach, with YouTube.js and yt-dlp. Lyrics from LRCLIB.</p>
       </section>
       <section className="settings-group glass">
         <h2>Shortcuts</h2>

@@ -39,6 +39,7 @@ export function createInnerTube({ fetchImpl = fetch, log = () => {} } = {}) {
   // When every client was just turned away, the connection is flagged: don't
   // spend four requests on each song until it has had a rest.
   let blockedUntil = 0;
+  let missesInARow = 0;
 
   async function player(videoId, name, signal) {
     const c = CLIENTS[name];
@@ -84,13 +85,20 @@ export function createInnerTube({ fetchImpl = fetch, log = () => {} } = {}) {
           };
           if (!(await servesWholeFile(a, signal, fetchImpl))) continue;
           winner = name;
+          missesInARow = 0;
           return a;
         } catch (e) {
           if (signal?.aborted) throw e;
           log(`innertube ${name}: ${e.message}`);
         }
       }
-      if (botWalls === ORDER.length) blockedUntil = Date.now() + 10 * 60_000;
+      // Every client failing on two songs running (bot walls, cut-off links) means a
+      // connection YouTube is strict with: rest the lane for ten minutes.
+      missesInARow++;
+      if (botWalls >= ORDER.length - 1 || missesInARow >= 2) {
+        blockedUntil = Date.now() + 10 * 60_000;
+        missesInARow = 0;
+      }
       return null;
     },
   };
