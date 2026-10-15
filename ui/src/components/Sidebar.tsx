@@ -1,4 +1,5 @@
-import { Download, Heart, Home, Library, Plus, Search, Settings } from "lucide-react";
+import { ArrowDownCircle, Download, Heart, Home, Library, Plus, Search, Settings } from "lucide-react";
+import { installUpdate, useUpdate } from "../update";
 import { useLibrary } from "../library";
 import { useNav, type Route } from "../nav";
 import { Art } from "./bits";
@@ -13,6 +14,7 @@ export function Sidebar() {
   const ytPlaylists = allYt.filter((p) => !hidden?.includes(p.id));
   const likes = useLibrary((s) => s.likes.length);
   const createPlaylist = useLibrary((s) => s.createPlaylist);
+  const update = useUpdate();
 
   const item = (r: Route, icon: React.ReactNode, label: string) => (
     <button className={`nav-item ${route.name === r.name ? "is-active" : ""}`} onClick={() => go(r)} title={label} aria-current={route.name === r.name ? "page" : undefined}>
@@ -68,6 +70,12 @@ export function Sidebar() {
           ))}
         </div>
       </div>
+      {update.state === "ready" && (
+        <button className="nav-item update-ready" onClick={installUpdate} title={`Restart to update to LUMA ${update.version}`}>
+          <ArrowDownCircle size={18} />
+          <span>Restart to update</span>
+        </button>
+      )}
       {item({ name: "settings" }, <Settings size={18} />, "Settings")}
     </aside>
   );

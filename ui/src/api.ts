@@ -41,6 +41,7 @@ export type SpotifyImport =
   | { state: "failed"; error: string; code?: string };
 export type SpotifyStatus = { connected: boolean; canConnect: boolean; account: { name: string | null } | null; import: SpotifyImport };
 export type SpotifySignIn = { ok: { name: string | null } | false; error?: string; cancelled?: boolean };
+export type UpdateState = { state: "idle" | "unsupported" | "checking" | "current" | "downloading" | "ready" | "error"; version: string | null; progress: number; error: string | null };
 export type YouTubeAccount = { name: string | null; handle: string | null; photo: string | null };
 export type SignInResult = { ok: YouTubeAccount | false; error?: string; cancelled?: boolean };
 
@@ -57,6 +58,10 @@ declare global {
       spotifyFromFile(): Promise<SpotifySignIn>;
       spotifyFromText(text: string): Promise<SpotifySignIn>;
       spotifySignOut(): Promise<boolean>;
+      updateState(): Promise<UpdateState | null>;
+      checkForUpdates(): Promise<UpdateState | null>;
+      installUpdate(): Promise<boolean>;
+      onUpdate(fn: (state: UpdateState) => void): () => void;
     };
   }
 }

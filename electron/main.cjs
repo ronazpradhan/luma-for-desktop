@@ -91,6 +91,14 @@ async function start() {
     await engine.disconnectSpotify();
     return true;
   });
+  ipcMain.handle("luma:update-state", (event) => (fromLuma(event) ? update : null));
+  ipcMain.handle("luma:update-check", (event) => (fromLuma(event) ? checkForUpdates() : null));
+  ipcMain.handle("luma:update-install", (event) => {
+    if (!fromLuma(event) || update.state !== "ready") return false;
+    // Silent install, then LUMA opens again on the new version.
+    autoUpdater?.quitAndInstall(true, true);
+    return true;
+  });
   ipcMain.handle("luma:youtube-sign-out", async (event) => {
     if (!fromLuma(event)) return false;
     await engine.signOutYouTube();
@@ -129,6 +137,7 @@ async function start() {
     }
   });
   win.once("ready-to-show", () => win.show());
+  startUpdates();
   win.on("closed", () => { win = null; });
   await win.loadURL(`${origin}/`);
 }
@@ -160,6 +169,43 @@ async function outcome(job) {
 
 function refused() {
   return { ok: false, error: "Not allowed" };
+}
+
+// ---- updates ------------------------------------------------------------------
+// New versions come from this project's GitHub Releases (latest.yml, written
+// by electron-builder). They download in the background and install when LUMA
+// quits, or straight away when the listener chooses Restart in the window.
+
+let autoUpdater = null;
+let update = { state: "idle", version: null, progress: 0, error: null };
+const UPDATE_EVERY_MS = 6 * 3_600_000;
+
+function setUpdate(patch) {
+  update = { ...update, ...patch };
+  win?.webContents.send("luma:update", update);
+}
+
+function startUpdates() {
+  // A development run (npm run app) has nothing to update.
+  if (!app.isPackaged) return setUpdate({ state: "unsupported" });
+  ({ autoUpdater } = require("electron-updater"));
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.logger = { info: (m) => writeLog(`update: ${m}`), warn: (m) => writeLog(`update: ${m}`), error: (m) => writeLog(`update error: ${m}`), debug() {} };
+  autoUpdater.on("checking-for-update", () => setUpdate({ state: "checking", error: null }));
+  autoUpdater.on("update-not-available", () => setUpdate({ state: "current" }));
+  autoUpdater.on("update-available", (i) => setUpdate({ state: "downloading", version: i.version, progress: 0 }));
+  autoUpdater.on("download-progress", (p) => setUpdate({ state: "downloading", progress: Math.round(p.percent) }));
+  autoUpdater.on("update-downloaded", (i) => setUpdate({ state: "ready", version: i.version, progress: 100 }));
+  autoUpdater.on("error", (e) => setUpdate({ state: update.state === "ready" ? "ready" : "error", error: String(e?.message ?? e).split("\n")[0] }));
+  setTimeout(checkForUpdates, 8_000);
+  setInterval(checkForUpdates, UPDATE_EVERY_MS);
+}
+
+function checkForUpdates() {
+  if (!autoUpdater || update.state === "downloading" || update.state === "ready") return update;
+  autoUpdater.checkForUpdates().catch(() => {});
+  return update;
 }
 
 // ---- log ----------------------------------------------------------------------

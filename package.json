@@ -1,7 +1,7 @@
 {
   "name": "luma-desktop",
   "productName": "LUMA",
-  "version": "0.5.2",
+  "version": "0.6.0",
   "description": "LUMA music player for Windows",
   "author": "Ronaz Pradhan",
   "license": "GPL-3.0-only",
@@ -16,10 +16,12 @@
     "build:ui": "vite build",
     "typecheck": "tsc --noEmit",
     "test": "node --test core/test/*.test.js",
-    "dist": "npm run build:ui && electron-builder --win"
+    "dist": "npm run build:ui && electron-builder --win",
+    "release": "npm run build:ui && electron-builder --win --publish always"
   },
   "dependencies": {
     "des.js": "^1.1.0",
+    "electron-updater": "^6.8.9",
     "youtubei.js": "^18.1.0"
   },
   "devDependencies": {
@@ -40,7 +42,7 @@
   "build": {
     "appId": "com.luma.desktop",
     "productName": "LUMA",
-    "copyright": "Copyright © 2026 Ronaz Pradhan",
+    "copyright": "Copyright \u00a9 2026 Ronaz Pradhan",
     "directories": {
       "output": "release",
       "buildResources": "build"
@@ -63,7 +65,7 @@
         }
       ],
       "icon": "build/icon.ico",
-      "artifactName": "LUMA-Setup-${version}.exe"
+      "artifactName": "LUMA-Setup.exe"
     },
     "nsis": {
       "oneClick": true,
@@ -71,6 +73,14 @@
       "deleteAppDataOnUninstall": false,
       "shortcutName": "LUMA",
       "uninstallDisplayName": "LUMA"
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "ronazpradhan",
+        "repo": "luma-for-desktop",
+        "releaseType": "release"
+      }
+    ]
   }
 }

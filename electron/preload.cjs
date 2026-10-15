@@ -1,5 +1,5 @@
 // The only bridge between LUMA's page and the app: the engine key, the
-// platform, and YouTube sign-in (from the listener's browser or a file).
+// platform, sign-ins (from the listener's browser or a file), and updates.
 const { contextBridge, ipcRenderer } = require("electron");
 
 const key = ipcRenderer.sendSync("luma:key");
@@ -15,5 +15,13 @@ if (key) {
     spotifyFromFile: () => ipcRenderer.invoke("luma:spotify-from-file"),
     spotifyFromText: (text) => ipcRenderer.invoke("luma:spotify-from-text", text),
     spotifySignOut: () => ipcRenderer.invoke("luma:spotify-sign-out"),
+    updateState: () => ipcRenderer.invoke("luma:update-state"),
+    checkForUpdates: () => ipcRenderer.invoke("luma:update-check"),
+    installUpdate: () => ipcRenderer.invoke("luma:update-install"),
+    onUpdate: (fn) => {
+      const listener = (_e, state) => fn(state);
+      ipcRenderer.on("luma:update", listener);
+      return () => ipcRenderer.removeListener("luma:update", listener);
+    },
   }));
 }

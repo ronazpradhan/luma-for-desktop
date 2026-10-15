@@ -5,6 +5,7 @@ import { useLibrary } from "../library";
 import { useAsync } from "./common";
 import { Art } from "../components/bits";
 import { SpotifySection } from "../components/SpotifySection";
+import { checkForUpdates, installUpdate, useUpdate } from "../update";
 
 const BROWSER_NAMES: Record<string, string> = { firefox: "Firefox" };
 /** The open-source exporter yt-dlp recommends (Chrome Web Store; works in Edge and Brave too). */
@@ -133,6 +134,7 @@ export function Settings() {
         <h2>About</h2>
         <dl className="about-list">
           <dt>LUMA for Windows</dt><dd>{status.data?.version ?? "…"}</dd>
+          <dt>Updates</dt><dd><UpdateStatus /></dd>
           <dt>YouTube helper</dt><dd>{!status.data ? "…" : /^unavailable/i.test(status.data.ytdlp) ? "Not ready yet" : status.data.ytdlp}</dd>
         </dl>
         <p className="muted small">Made by Ronaz Pradhan. LUMA for Android is a fork of Stash by rawnaldclark (GPL-3.0). YouTube playback follows Spotube's approach, with YouTube.js and yt-dlp. Lyrics from LRCLIB.</p>
@@ -150,4 +152,18 @@ export function Settings() {
       </section>
     </div>
   );
+}
+
+/** Where the app's own update stands, with the one action that fits. */
+function UpdateStatus() {
+  const u = useUpdate();
+  switch (u.state) {
+    case "unsupported": return <span className="muted">Only the installed app updates itself</span>;
+    case "checking": return <span className="muted">Checking…</span>;
+    case "downloading": return <span className="muted">Downloading LUMA {u.version}… {u.progress}%</span>;
+    case "ready": return <span className="update-line">LUMA {u.version} is ready <button className="btn btn-primary btn-small" onClick={installUpdate}>Restart to update</button></span>;
+    case "error": return <span className="update-line"><span className="muted">Couldn't check for updates</span> <button className="btn btn-quiet btn-small" onClick={checkForUpdates}>Try again</button></span>;
+    case "current": return <span className="update-line">Up to date <button className="btn btn-quiet btn-small" onClick={checkForUpdates}>Check again</button></span>;
+    default: return <span className="update-line"><button className="btn btn-quiet btn-small" onClick={checkForUpdates}>Check for updates</button></span>;
+  }
 }
