@@ -326,6 +326,8 @@ h1, h2, h3, p { margin: 0; }
 .account small { color: var(--haze); font-size: 12.5px; }
 .side-icon.yt { background: linear-gradient(135deg, #ff4e45, #a1132c); color: #fff; }
 .side-icon.spotify { background: #1ed760; color: #0b0b0b; font-weight: 800; }
+.paste { flex: 1; min-width: 0; height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid rgb(255 255 255 / 0.14); background: rgb(255 255 255 / 0.06); outline: 0; }
+.paste:focus { border-color: color-mix(in srgb, var(--accent) 60%, transparent); }
 .import-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .progress { flex: 1; max-width: 240px; height: 6px; border-radius: 6px; background: rgb(255 255 255 / 0.1); overflow: hidden; }
 .progress > span { display: block; height: 100%; background: var(--accent); border-radius: 6px; transition: width 0.4s var(--ease); }

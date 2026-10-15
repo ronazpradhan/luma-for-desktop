@@ -12,7 +12,7 @@ import { timingSafeEqual } from "node:crypto";
 
 import { createInnerTube } from "./innertube.js";
 import { createYtJs } from "./ytjs.js";
-import { createSpotify } from "./spotify.js";
+import { cleanSpDc, createSpotify, spDcFromJar } from "./spotify.js";
 import { bestMatch } from "./match.js";
 import { createLyrics } from "./lyrics.js";
 import { createResolver } from "./resolver.js";
@@ -540,7 +540,35 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
       if (info.size > 5_000_000) throw new Error("That file is too big to be a cookies file.");
       return adoptJar(parseNetscape(await readFile(file, "utf8")), "That file has no signed-in YouTube session in it.");
     },
-    /** The app's Spotify sign-in window hands over sp_dc here, never over HTTP. */
+    /**
+     * Spotify's sign-in comes from the listener's own browser, like YouTube's:
+     * Firefox's jar, a cookies file, or the sp_dc value pasted from Chrome or
+     * Edge. Asked for by the app, never over HTTP. Only sp_dc is kept.
+     */
+    async importSpotifyFromBrowser(browser) {
+      const tmp = path.join(dataDir, "bin", `jar-${Date.now()}.txt`);
+      await mkdir(path.dirname(tmp), { recursive: true });
+      try {
+        await ytdlp.exportBrowserCookies(browser, tmp);
+        const spDc = spDcFromJar(parseNetscape(await readFile(tmp, "utf8").catch(() => "")));
+        if (!spDc) throw new Error("That browser isn't signed in to Spotify. Sign in at open.spotify.com there first.");
+        return await this.connectSpotify(spDc);
+      } finally {
+        await rm(tmp, { force: true });
+      }
+    },
+    async importSpotifyFromFile(file) {
+      const info = await stat(file);
+      if (info.size > 5_000_000) throw new Error("That file is too big to be a cookies file.");
+      const spDc = spDcFromJar(parseNetscape(await readFile(file, "utf8")));
+      if (!spDc) throw new Error("That file has no signed-in Spotify session in it. Export it from open.spotify.com while signed in.");
+      return this.connectSpotify(spDc);
+    },
+    async importSpotifyFromText(text) {
+      const spDc = cleanSpDc(text);
+      if (!spDc) throw new Error("That doesn't look like an sp_dc value. Copy the whole Value of the sp_dc cookie.");
+      return this.connectSpotify(spDc);
+    },
     async connectSpotify(spDc) {
       const probe = createSpotify({ log });
       probe.setSession(spDc);

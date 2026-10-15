@@ -1,18 +1,26 @@
 import { useEffect, useState } from "react";
-import { api, type SpotifyStatus } from "../api";
+import { api, type SpotifySignIn, type SpotifyStatus } from "../api";
 import { useLibrary } from "../library";
 import { toast } from "../toast";
 
-/** Settings: connect Spotify and bring its Liked Songs and playlists into LUMA. */
+const BROWSER_NAMES: Record<string, string> = { firefox: "Firefox" };
+
+/**
+ * Settings: connect Spotify and bring its Liked Songs and playlists into LUMA.
+ * The sign-in happens in the listener's own browser, as YouTube's does.
+ */
 export function SpotifySection() {
   const [status, setStatus] = useState<SpotifyStatus | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [pasted, setPasted] = useState("");
+  const [browsers, setBrowsers] = useState<string[]>([]);
   const [problem, setProblem] = useState<string | null>(null);
   const bridge = window.luma;
   const running = status?.import.state === "running";
 
   const refresh = () => api.spotify().then(setStatus).catch(() => {});
   useEffect(() => { refresh(); }, []);
+  useEffect(() => { bridge?.youtubeBrowsers().then(setBrowsers).catch(() => {}); }, [bridge]);
 
   // While an import runs, follow it; when it ends, the new playlists appear.
   useEffect(() => {
@@ -29,17 +37,18 @@ export function SpotifySection() {
     return () => clearInterval(t);
   }, [running]);
 
-  async function connect() {
-    if (!bridge) return;
-    setBusy(true);
+  async function connect(id: string, job: () => Promise<SpotifySignIn>) {
+    setBusy(id);
     setProblem(null);
     try {
-      const r = await bridge.spotifySignIn();
-      if (r.ok) toast(r.ok.name ? `Connected Spotify as ${r.ok.name}` : "Connected Spotify");
-      else if (!r.cancelled) setProblem(r.error ?? "That didn't work.");
+      const r = await job();
+      if (r.ok) {
+        setPasted("");
+        toast(r.ok.name ? `Connected Spotify as ${r.ok.name}` : "Connected Spotify");
+      } else if (!r.cancelled) setProblem(r.error ?? "That didn't work.");
       await refresh();
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }
 
@@ -72,18 +81,62 @@ export function SpotifySection() {
           <p>
             {status?.connected
               ? "Your Spotify Liked Songs and playlists are in your Library as LUMA playlists, and play through LUMA's sources."
-              : "Sign in to bring your Spotify Liked Songs and playlists into LUMA. Spotify's own sign-in page opens; LUMA never sees your password and never changes anything on Spotify."}
+              : "Bring your Spotify Liked Songs and playlists into LUMA. You sign in to Spotify in your own browser, then hand LUMA that sign-in."}
           </p>
         </span>
         {!bridge ? (
           <span className="muted small">Open the LUMA app to connect</span>
-        ) : status?.connected ? (
+        ) : status?.connected && (
           <button className="btn" onClick={disconnect}>Disconnect</button>
-        ) : (
-          <button className="btn btn-primary" onClick={connect} disabled={busy || status?.canConnect === false}>{busy ? "Waiting for Spotify" : "Connect Spotify"}</button>
         )}
       </div>
-      {!status?.connected && bridge && <p className="muted small">Sign in with your email or phone. "Continue with Google" won't work there, because Google blocks sign-in inside apps.</p>}
+      {bridge && !status?.connected && status?.canConnect !== false && (
+        <>
+          <ol className="steps">
+            <li>
+              In your browser, go to{" "}
+              <a className="link strong" href="https://open.spotify.com/" target="_blank" rel="noreferrer">open.spotify.com</a>{" "}
+              and sign in. Any way works there, Google too.
+            </li>
+            <li>Press <kbd>F12</kbd>, open <b>Application</b>, then <b>Cookies</b> › <b>https://open.spotify.com</b>.</li>
+            <li>Click <b>sp_dc</b>, copy its whole <b>Value</b>, and paste it here.</li>
+          </ol>
+          <form
+            className="actions compact"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (pasted.trim()) connect("text", () => bridge.spotifyFromText(pasted));
+            }}
+          >
+            <input
+              className="paste"
+              type="password"
+              placeholder="Paste sp_dc here"
+              autoComplete="off"
+              spellCheck={false}
+              value={pasted}
+              onChange={(e) => setPasted(e.target.value)}
+            />
+            <button className="btn btn-primary" type="submit" disabled={!!busy || !pasted.trim()}>
+              {busy === "text" ? "Checking with Spotify" : "Connect"}
+            </button>
+          </form>
+          <div className="actions compact">
+            <button className="btn" disabled={!!busy} onClick={() => connect("file", () => bridge.spotifyFromFile())}>
+              {busy === "file" ? "Checking with Spotify" : "Or choose a cookies file"}
+            </button>
+            {browsers.map((b) => (
+              <button key={b} className="btn" disabled={!!busy} onClick={() => connect(b, () => bridge.spotifyFromBrowser(b))}>
+                {busy === b ? `Reading ${BROWSER_NAMES[b]}` : `Use ${BROWSER_NAMES[b] ?? b}'s sign-in`}
+              </button>
+            ))}
+          </div>
+          <p className="muted small">
+            LUMA keeps only that one Spotify sign-in, encrypted on this PC. It never sees your password and never changes anything on Spotify. Signing out of Spotify in the browser ends it, so use a private window if you sign out often.
+          </p>
+        </>
+      )}
+      {status?.canConnect === false && <p className="muted small">Windows can't protect saved sign-ins on this PC, so LUMA can't keep one.</p>}
       {status?.connected && imp && (
         <div className="import-row">
           {imp.state === "running" ? (

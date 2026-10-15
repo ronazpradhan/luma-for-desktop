@@ -220,6 +220,22 @@ export function parseTrack(d) {
   };
 }
 
+/** The sp_dc cookie from a cookie jar (cookies file or Firefox), or null. */
+export function spDcFromJar(cookies) {
+  const c = cookies.find((c) => c.name === "sp_dc" && /(^|\.)spotify\.com$/.test(c.domain.replace(/^\./, "")) && c.value);
+  return c?.value ?? null;
+}
+
+/**
+ * The sp_dc value from what the listener pasted: the bare value as the
+ * browser's developer tools show it, "sp_dc=…", or a whole Cookie header.
+ */
+export function cleanSpDc(text) {
+  const s = String(text ?? "").trim().replace(/^["']|["']$/g, "");
+  const v = /(?:^|[;\s])sp_dc=([^;\s]+)/.exec(s)?.[1] ?? (s.includes("=") ? null : s);
+  return v && /^[A-Za-z0-9_-]{40,}$/.test(v) ? v : null;
+}
+
 export function extractClientVersion(html) {
   const direct = /"clientVersion"\s*:\s*"([^"]+)"/.exec(html)?.[1];
   if (direct) return direct;

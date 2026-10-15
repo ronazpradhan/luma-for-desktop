@@ -3,7 +3,8 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
-import { extractClientVersion, parseTrack, totp } from "../spotify.js";
+import { cleanSpDc, extractClientVersion, parseTrack, spDcFromJar, totp } from "../spotify.js";
+import { parseNetscape } from "../youtube-auth.js";
 import { openStore } from "../store.js";
 
 test("the web player's TOTP (checked against an independent implementation)", () => {
@@ -42,4 +43,26 @@ test("an imported playlist is replaced in place, not duplicated", async () => {
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
+});
+
+const SP_DC = "AQBx3kZ_9fLm-2QwErTyUiOpAsDfGhJkLzXcVbNm1234567890abcdefGHIJ";
+
+test("a pasted sp_dc is accepted bare, as name=value, or inside a Cookie header", () => {
+  assert.equal(cleanSpDc(SP_DC), SP_DC);
+  assert.equal(cleanSpDc(`  "${SP_DC}"\n`), SP_DC);
+  assert.equal(cleanSpDc(`sp_dc=${SP_DC}`), SP_DC);
+  assert.equal(cleanSpDc(`sp_t=abc; sp_dc=${SP_DC}; sp_key=x`), SP_DC);
+  assert.equal(cleanSpDc("sp_t=abc; sp_key=x"), null);
+  assert.equal(cleanSpDc("hello"), null);
+  assert.equal(cleanSpDc(""), null);
+});
+
+test("sp_dc is found in a cookies file, and only Spotify's counts", () => {
+  const jar = parseNetscape([
+    "# Netscape HTTP Cookie File",
+    `.youtube.com\tTRUE\t/\tTRUE\t0\tsp_dc\tnot-this-one`,
+    `#HttpOnly_.spotify.com\tTRUE\t/\tTRUE\t1893456000\tsp_dc\t${SP_DC}`,
+  ].join("\n"));
+  assert.equal(spDcFromJar(jar), SP_DC);
+  assert.equal(spDcFromJar(parseNetscape(".spotify.com\tTRUE\t/\tTRUE\t0\tsp_t\tx")), null);
 });

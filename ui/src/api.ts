@@ -40,6 +40,7 @@ export type SpotifyImport =
   | { state: "done"; at: number; playlists: number; songs: number; unmatched: number }
   | { state: "failed"; error: string; code?: string };
 export type SpotifyStatus = { connected: boolean; canConnect: boolean; account: { name: string | null } | null; import: SpotifyImport };
+export type SpotifySignIn = { ok: { name: string | null } | false; error?: string; cancelled?: boolean };
 export type YouTubeAccount = { name: string | null; handle: string | null; photo: string | null };
 export type SignInResult = { ok: YouTubeAccount | false; error?: string; cancelled?: boolean };
 
@@ -52,7 +53,9 @@ declare global {
       youtubeFromBrowser(browser: string): Promise<SignInResult>;
       youtubeFromFile(): Promise<SignInResult>;
       youtubeSignOut(): Promise<boolean>;
-      spotifySignIn(): Promise<{ ok: { name: string | null } | false; error?: string; cancelled?: boolean }>;
+      spotifyFromBrowser(browser: string): Promise<SpotifySignIn>;
+      spotifyFromFile(): Promise<SpotifySignIn>;
+      spotifyFromText(text: string): Promise<SpotifySignIn>;
       spotifySignOut(): Promise<boolean>;
     };
   }

@@ -70,10 +70,24 @@ async function start() {
     if (pick.canceled || !pick.filePaths[0]) return { ok: false, cancelled: true };
     return outcome(engine.importYouTubeFromFile(pick.filePaths[0]));
   });
-  ipcMain.handle("luma:spotify-sign-in", (event) => (fromLuma(event) ? spotifySignIn() : refused()));
+  // Spotify's sign-in also comes from the listener's own browser: Spotify's
+  // login page refuses to be trusted inside an app window.
+  ipcMain.handle("luma:spotify-from-browser", (event, browser) =>
+    fromLuma(event) ? outcome(engine.importSpotifyFromBrowser(String(browser))) : refused());
+  ipcMain.handle("luma:spotify-from-file", async (event) => {
+    if (!fromLuma(event)) return refused();
+    const pick = await dialog.showOpenDialog(win, {
+      title: "Choose a Spotify cookies file",
+      properties: ["openFile"],
+      filters: [{ name: "Cookies file", extensions: ["txt"] }],
+    });
+    if (pick.canceled || !pick.filePaths[0]) return { ok: false, cancelled: true };
+    return outcome(engine.importSpotifyFromFile(pick.filePaths[0]));
+  });
+  ipcMain.handle("luma:spotify-from-text", (event, text) =>
+    fromLuma(event) ? outcome(engine.importSpotifyFromText(String(text).slice(0, 8_000))) : refused());
   ipcMain.handle("luma:spotify-sign-out", async (event) => {
     if (!fromLuma(event)) return false;
-    await session.fromPartition(SPOTIFY_PARTITION).clearStorageData();
     await engine.disconnectSpotify();
     return true;
   });
@@ -134,73 +148,6 @@ function installedBrowsers() {
   return Object.entries(BROWSER_EXES)
     .filter(([, parts]) => roots.some((root) => fs.existsSync(path.join(root, ...parts))))
     .map(([id]) => id);
-}
-
-// ---- Spotify sign-in --------------------------------------------------------
-// Spotify's own login page in a window with its own cookie jar. LUMA never
-// sees the password: once open.spotify.com has a signed-in session, its sp_dc
-// cookie goes to the engine and the window closes.
-
-const SPOTIFY_PARTITION = "persist:spotify-signin";
-const SPOTIFY_LOGIN = "https://accounts.spotify.com/login?continue=" + encodeURIComponent("https://open.spotify.com/");
-const SPOTIFY_HOSTS = /(^|\.)(spotify\.com|scdn\.co|spotifycdn\.com|recaptcha\.net|gstatic\.com|google\.com|facebook\.com|apple\.com)$/;
-let spotifyWindow = null;
-
-function spotifySignIn() {
-  if (spotifyWindow) {
-    spotifyWindow.focus();
-    return Promise.resolve({ ok: false, cancelled: true });
-  }
-  const ses = session.fromPartition(SPOTIFY_PARTITION);
-  ses.setUserAgent(ses.getUserAgent().replace(/\s?Electron\/\S+/, "").replace(/\s?(LUMA|luma-desktop)\/\S+/, ""));
-  ses.setPermissionRequestHandler((_wc, _perm, cb) => cb(false));
-  return new Promise((resolve) => {
-    let done = false;
-    spotifyWindow = new BrowserWindow({
-      parent: win ?? undefined,
-      width: 480,
-      height: 760,
-      title: "Sign in to Spotify",
-      backgroundColor: "#121212",
-      autoHideMenuBar: true,
-      webPreferences: { partition: SPOTIFY_PARTITION, contextIsolation: true, nodeIntegration: false, sandbox: true, webviewTag: false },
-    });
-    const wc = spotifyWindow.webContents;
-    const allowed = (url) => {
-      try {
-        const u = new URL(url);
-        return u.protocol === "https:" && SPOTIFY_HOSTS.test(u.hostname);
-      } catch {
-        return false;
-      }
-    };
-    wc.setWindowOpenHandler(({ url }) => {
-      if (allowed(url)) wc.loadURL(url);
-      return { action: "deny" };
-    });
-    wc.on("will-navigate", (e, url) => { if (!allowed(url)) e.preventDefault(); });
-    const check = async () => {
-      if (done) return;
-      const [cookie] = await ses.cookies.get({ name: "sp_dc" });
-      if (!cookie?.value) return;
-      done = true;
-      try {
-        const account = await engine.connectSpotify(cookie.value);
-        resolve({ ok: account ?? { name: null } });
-      } catch (e) {
-        resolve({ ok: false, error: e.message });
-      }
-      spotifyWindow?.close();
-    };
-    wc.on("did-navigate", check);
-    wc.on("did-navigate-in-page", check);
-    wc.on("did-finish-load", check);
-    spotifyWindow.on("closed", () => {
-      spotifyWindow = null;
-      if (!done) resolve({ ok: false, cancelled: true });
-    });
-    spotifyWindow.loadURL(SPOTIFY_LOGIN);
-  });
 }
 
 async function outcome(job) {
