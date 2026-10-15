@@ -11,5 +11,7 @@ if (key) {
     youtubeFromBrowser: (browser) => ipcRenderer.invoke("luma:youtube-from-browser", browser),
     youtubeFromFile: () => ipcRenderer.invoke("luma:youtube-from-file"),
     youtubeSignOut: () => ipcRenderer.invoke("luma:youtube-sign-out"),
+    spotifySignIn: () => ipcRenderer.invoke("luma:spotify-sign-in"),
+    spotifySignOut: () => ipcRenderer.invoke("luma:spotify-sign-out"),
   }));
 }

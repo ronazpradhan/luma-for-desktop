@@ -76,6 +76,21 @@ export async function openStore(dir) {
       save();
     },
 
+    /** An imported playlist ([source] like "spotify:<id>"), replaced in place on each import. */
+    upsertImported(source, name, tracks, art = null) {
+      let p = data.playlists.find((x) => x.source === source);
+      if (p) {
+        p.name = name.slice(0, 120) || p.name;
+        p.tracks = tracks;
+      } else {
+        p = { id: randomUUID(), name: name.slice(0, 120) || "Imported playlist", tracks, createdAt: Date.now(), source };
+        data.playlists.push(p);
+      }
+      if (art) p.coverArt = art;
+      save();
+      return p;
+    },
+
     createPlaylist(name, tracks = []) {
       const p = { id: randomUUID(), name: name.slice(0, 120) || "New playlist", tracks, createdAt: Date.now() };
       data.playlists.unshift(p);

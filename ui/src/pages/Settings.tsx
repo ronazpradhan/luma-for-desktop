@@ -4,6 +4,7 @@ import { toast } from "../toast";
 import { useLibrary } from "../library";
 import { useAsync } from "./common";
 import { Art } from "../components/bits";
+import { SpotifySection } from "../components/SpotifySection";
 
 const BROWSER_NAMES: Record<string, string> = { firefox: "Firefox" };
 /** The open-source exporter yt-dlp recommends (Chrome Web Store; works in Edge and Brave too). */
@@ -114,6 +115,8 @@ export function Settings() {
         )}
         {yt?.canSignIn === false && <p className="muted small">Windows can't protect saved sign-ins on this PC, so LUMA can't keep one.</p>}
       </section>
+
+      <SpotifySection />
 
       <section className="settings-group glass">
         <h2>Where songs come from</h2>

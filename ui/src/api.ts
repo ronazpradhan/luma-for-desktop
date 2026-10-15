@@ -34,6 +34,12 @@ export type Lyrics = { synced: boolean; lines: { time: number | null; text: stri
 export type Resolved = { source: "jiosaavn" | "youtube" | "download"; codec: string; kbps?: number | null };
 export type DownloadState = Record<string, { state: "running" | "done" | "failed"; progress: number; error?: string }>;
 
+export type SpotifyImport =
+  | { state: "idle" }
+  | { state: "running"; done: number; total: number; phase: string }
+  | { state: "done"; at: number; playlists: number; songs: number; unmatched: number }
+  | { state: "failed"; error: string; code?: string };
+export type SpotifyStatus = { connected: boolean; canConnect: boolean; account: { name: string | null } | null; import: SpotifyImport };
 export type YouTubeAccount = { name: string | null; handle: string | null; photo: string | null };
 export type SignInResult = { ok: YouTubeAccount | false; error?: string; cancelled?: boolean };
 
@@ -46,6 +52,8 @@ declare global {
       youtubeFromBrowser(browser: string): Promise<SignInResult>;
       youtubeFromFile(): Promise<SignInResult>;
       youtubeSignOut(): Promise<boolean>;
+      spotifySignIn(): Promise<{ ok: { name: string | null } | false; error?: string; cancelled?: boolean }>;
+      spotifySignOut(): Promise<boolean>;
     };
   }
 }
@@ -74,6 +82,8 @@ export function slim(t: Track): Track {
 
 export const api = {
   status: () => call<{ version: string; ytdlp: string; youtube: { signedIn: boolean; canSignIn: boolean; account: YouTubeAccount | null } }>("GET", "/api/status"),
+  spotify: () => call<SpotifyStatus>("GET", "/api/spotify"),
+  spotifyImport: () => call<{ import: SpotifyImport }>("POST", "/api/spotify/import", {}),
   youtubeLibrary: () => call<{ playlists: Tile[] }>("GET", "/api/youtube/library"),
   home: () => call<{ shelves: Shelf[] }>("GET", "/api/home"),
   forYou: () => call<{ basedOn: string | null; songs: Track[] }>("GET", "/api/foryou"),
@@ -84,7 +94,8 @@ export const api = {
   ytPlaylist: (id: string) => call<YtPlaylist>("GET", `/api/ytplaylist/${id}`),
   radio: (id: string) => call<Track[]>("GET", `/api/radio/${id}`),
   lyrics: (t: Track) => call<Lyrics>("POST", "/api/lyrics", { track: slim(t) }),
-  resolve: (t: Track) => call<Resolved>("POST", "/api/resolve", { track: slim(t) }),
+  resolve: (t: Track, online = false) => call<Resolved>("POST", "/api/resolve", { track: slim(t), online }),
+  log: (message: string) => call<{ ok: true }>("POST", "/api/log", { message }).catch(() => {}),
   prefetch: (t: Track) => call<{ ready: boolean }>("POST", "/api/prefetch", { track: slim(t) }),
   library: () => call<Library>("GET", "/api/library"),
   like: (t: Track, liked: boolean) => call<Library>("POST", "/api/like", { track: slim(t), liked }),
@@ -100,7 +111,7 @@ export const api = {
   settings: (patch: Partial<Library["settings"]>) => call<Library["settings"]>("PATCH", "/api/settings", patch),
 };
 
-export const streamUrl = (id: string) => withKey(`/stream/${id}`);
+export const streamUrl = (id: string, online = false) => withKey(`/stream/${id}${online ? "?online=1" : ""}`);
 
 /** Artwork through the engine: same-origin, so its colours can be read. */
 export const img = (url?: string | null) => (url ? withKey(`/img?u=${encodeURIComponent(url)}`) : undefined);

@@ -91,6 +91,7 @@ export const usePlayer = create<PlayerState>((set, get) => {
     } catch (e) {
       if (token !== loadToken) return;
       if ((e as Error).name === "AbortError") return;
+      api.log(`"${track.title}" (${track.id}) didn't start: ${(e as Error).message}`);
       set({ loading: false });
       const code = (e as { code?: string }).code;
       toast(code === "YOUTUBE_SIGNIN"
@@ -98,6 +99,24 @@ export const usePlayer = create<PlayerState>((set, get) => {
         : code === "YOUTUBE_BLOCKED"
           ? `YouTube is refusing this PC right now. Skipping "${track.title}".`
           : `Couldn't play "${track.title}" (${(e as Error).message}). Skipping it.`);
+      setTimeout(() => token === loadToken && advance(true), 1200);
+    }
+  }
+
+  async function startOnline(index: number) {
+    const track = get().queue[index];
+    if (!track) return;
+    const token = ++loadToken;
+    set({ loading: true });
+    try {
+      const source = await api.resolve(track, true);
+      if (token !== loadToken) return;
+      set({ source });
+      audio.src = streamUrl(track.id, true);
+      await audio.play();
+    } catch (e) {
+      if (token !== loadToken || (e as Error).name === "AbortError") return;
+      toast(`Couldn't play "${track.title}" (${(e as Error).message}). Skipping it.`);
       setTimeout(() => token === loadToken && advance(true), 1200);
     }
   }
@@ -133,12 +152,24 @@ export const usePlayer = create<PlayerState>((set, get) => {
   audio.addEventListener("waiting", () => set({ loading: true }));
   audio.addEventListener("canplay", () => set({ loading: false }));
   audio.addEventListener("loadedmetadata", () => Number.isFinite(audio.duration) && set({ duration: audio.duration }));
-  audio.addEventListener("ended", () => advance(true));
+  audio.addEventListener("ended", () => {
+    const t = get().current();
+    api.log(`ended "${t?.title}" at ${audio.currentTime.toFixed(1)} of ${audio.duration.toFixed(1)} s`);
+    advance(true);
+  });
   audio.addEventListener("error", () => {
     const t = get().current();
     if (!t || !audio.src) return;
+    const why = `media error ${audio.error?.code ?? "?"}${audio.error?.message ? `: ${audio.error.message}` : ""}`;
+    api.log(`"${t.title}" (${t.id}) failed from ${get().source?.source ?? "?"}: ${why}`);
     resolved.delete(t.id);
-    toast(`"${t.title}" stopped loading. Skipping it.`);
+    // A downloaded file that won't play is streamed instead of skipped.
+    if (get().source?.source === "download") {
+      toast(`The download of "${t.title}" won't play, so it's streaming instead.`);
+      startOnline(get().index);
+      return;
+    }
+    toast(`"${t.title}" stopped loading (${why}). Skipping it.`);
     setTimeout(() => advance(true), 1200);
   });
   let lastPrefetch = "";

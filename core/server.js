@@ -12,6 +12,8 @@ import { timingSafeEqual } from "node:crypto";
 
 import { createInnerTube } from "./innertube.js";
 import { createYtJs } from "./ytjs.js";
+import { createSpotify } from "./spotify.js";
+import { bestMatch } from "./match.js";
 import { createLyrics } from "./lyrics.js";
 import { createResolver } from "./resolver.js";
 import { createSaavn } from "./saavn.js";
@@ -53,6 +55,73 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
   const mobileWeb = createYtJs({ log });
   const resolver = createResolver({ saavn, ytdlp, innertube: createInnerTube({ log }), mobileWeb, youtubeAuth, tmpDir: path.join(dataDir, "bin"), log });
   const lyrics = createLyrics({ ytmusic, version });
+
+  // ---- Spotify: the session is kept like YouTube's, encrypted with Windows' protection.
+  const spotify = createSpotify({ log });
+  const spotifyFile = path.join(dataDir, "spotify-session.bin");
+  const matchFile = path.join(dataDir, "spotify-matches.json");
+  if (vault) {
+    try {
+      spotify.setSession(JSON.parse(vault.decrypt(await readFile(spotifyFile))).spDc);
+    } catch { /* not connected */ }
+  }
+  let spotifyAccount = null;
+  let importState = { state: "idle" };
+  let matches = {};
+  try {
+    matches = JSON.parse(await readFile(matchFile, "utf8"));
+  } catch { /* first import */ }
+
+  /** The YouTube Music recording of a Spotify track, or null when unsure. */
+  async function matchOnYouTube(t) {
+    if (t.spotifyId in matches) return matches[t.spotifyId];
+    const first = t.artist.split(",")[0];
+    const res = await ytmusic.search(`${t.title} ${first}`).catch(() => null);
+    const songs = res?.songs ?? [];
+    const pick = bestMatch(
+      { title: t.title, artist: t.artist, duration: t.duration },
+      songs.map((s) => ({ ...s, artists: s.artist.split(/,\s*|\s&\s/) })),
+    );
+    const hit = pick ? cleanTrack({ ...pick, art: pick.art ?? t.art }) : null;
+    matches[t.spotifyId] = hit;
+    return hit;
+  }
+
+  async function importSpotify() {
+    if (importState.state === "running") return;
+    importState = { state: "running", done: 0, total: 0, phase: "Reading your Spotify library" };
+    try {
+      const liked = await spotify.likedSongs();
+      const lists = await spotify.playlists();
+      const sets = [{ source: "spotify:liked", name: "Liked Songs (Spotify)", art: null, tracks: liked }];
+      for (const p of lists) {
+        importState.phase = `Reading "${p.name}"`;
+        sets.push({ source: `spotify:${p.id}`, name: p.name, art: p.art, tracks: await spotify.playlistTracks(p.id).catch(() => []) });
+      }
+      const all = new Map();
+      for (const s of sets) for (const t of s.tracks) all.set(t.spotifyId, t);
+      importState = { state: "running", done: 0, total: all.size, phase: "Finding your songs on YouTube Music" };
+      const queue = [...all.values()];
+      let unmatched = 0;
+      await Promise.all(Array.from({ length: 6 }, async () => {
+        for (let t = queue.shift(); t; t = queue.shift()) {
+          if (!(await matchOnYouTube(t))) unmatched++;
+          importState.done++;
+        }
+      }));
+      await writeFile(matchFile, JSON.stringify(matches));
+      for (const s of sets) {
+        const tracks = s.tracks.map((t) => matches[t.spotifyId]).filter(Boolean);
+        const seen = new Set();
+        store.upsertImported(s.source, s.name, tracks.filter((t) => !seen.has(t.id) && seen.add(t.id)), s.art);
+      }
+      importState = { state: "done", at: Date.now(), playlists: sets.length, songs: all.size, unmatched };
+      log(`spotify: imported ${sets.length} playlists, ${all.size} songs (${unmatched} not found on YouTube Music)`);
+    } catch (e) {
+      log(`spotify import failed: ${e.message}`);
+      importState = { state: "failed", error: e.message, code: e.code };
+    }
+  }
   const downloads = new Map(); // id -> { state, progress, error }
   const images = new Map(); // url -> { type, body } (small LRU)
   let actualPort = port;
@@ -98,7 +167,7 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
     const d = store.snapshot();
     return {
       likes: d.likes,
-      playlists: d.playlists.map((p) => ({ ...p, art: p.tracks.find((t) => t.art)?.art ?? null })),
+      playlists: d.playlists.map((p) => ({ ...p, art: p.coverArt ?? p.tracks.find((t) => t.art)?.art ?? null })),
       history: d.history.slice(0, 60),
       downloads: Object.fromEntries(Object.entries(d.downloads).map(([id, e]) => [id, { track: e.track, at: e.at, size: e.size }])),
       settings: d.settings,
@@ -130,8 +199,8 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
 
   // ---- audio ------------------------------------------------------------
 
-  async function streamTo(req, res, id) {
-    const local = store.download(id);
+  async function streamTo(req, res, id, online = false) {
+    const local = online ? null : store.download(id);
     if (local && (await stat(local.path).catch(() => null))) return sendFile(req, res, local.path, local.type);
     let stream = resolver.cached(id);
     if (!stream) throw new HttpError(409, "resolve this song first");
@@ -271,7 +340,7 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
     if (m === "GET" && p.startsWith("/stream/")) {
       const id = p.slice(8);
       if (!VIDEO_ID.test(id)) throw new HttpError(400, "bad id");
-      return streamTo(req, res, id);
+      return streamTo(req, res, id, url.searchParams.get("online") === "1");
     }
     if (m === "GET" && p === "/img") return image(res, url.searchParams.get("u") ?? "");
 
@@ -304,6 +373,14 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
         return send(res, 200, await ytmusic.artist(needId()));
       case "GET ytplaylist":
         return send(res, 200, await ytmusic.playlist(needId()));
+      case "GET spotify":
+        if (spotify.connected() && !spotifyAccount) spotifyAccount = await spotify.account().catch(() => null);
+        return send(res, 200, { connected: spotify.connected(), canConnect: !!vault, account: spotifyAccount, import: importState });
+      case "POST spotify":
+        if (id !== "import") throw new HttpError(404, "not found");
+        if (!spotify.connected()) throw new HttpError(409, "Connect Spotify first.");
+        importSpotify();
+        return send(res, 202, { import: importState });
       case "GET youtube":
         if (id === "account") return send(res, 200, { account: await account() });
         if (id === "library") return send(res, 200, { playlists: await ytmusic.libraryPlaylists() });
@@ -313,10 +390,11 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
       case "POST lyrics":
         return send(res, 200, await lyrics.get(track((await body(req)).track)));
       case "POST resolve": {
-        const t = track((await body(req)).track);
-        log(`play "${t.title}" by ${t.artist} (${t.id})`);
-        const local = store.download(t.id);
-        if (local) return send(res, 200, { source: "download", codec: local.type === "audio/webm" ? "opus" : "aac" });
+        const b = await body(req);
+        const t = track(b.track);
+        log(`play "${t.title}" by ${t.artist} (${t.id})${b.online ? " online" : ""}`);
+        const local = b.online ? null : store.download(t.id);
+        if (local && (await stat(local.path).catch(() => null))) return send(res, 200, { source: "download", codec: local.type === "audio/webm" ? "opus" : "aac" });
         const s = await resolver.resolve(t).catch((e) => {
           log(`could not play "${t.title}" (${t.id}): ${e.code ?? ""} ${e.message}`);
           const err = new HttpError(502, e.code ? e.message : `Couldn't find this song (${e.message})`);
@@ -331,6 +409,11 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
         if (store.download(t.id)) return send(res, 200, { ready: true });
         const s = await resolver.resolve(t, { light: true }).catch(() => null);
         return send(res, 200, { ready: !!s });
+      }
+      case "POST log": {
+        const b = await body(req);
+        log(`window: ${String(b.message ?? "").slice(0, 300)}`);
+        return send(res, 200, { ok: true });
       }
       case "GET library":
         return send(res, 200, libraryView());
@@ -456,6 +539,23 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
       const info = await stat(file);
       if (info.size > 5_000_000) throw new Error("That file is too big to be a cookies file.");
       return adoptJar(parseNetscape(await readFile(file, "utf8")), "That file has no signed-in YouTube session in it.");
+    },
+    /** The app's Spotify sign-in window hands over sp_dc here, never over HTTP. */
+    async connectSpotify(spDc) {
+      const probe = createSpotify({ log });
+      probe.setSession(spDc);
+      const who = await probe.account();
+      spotify.setSession(spDc);
+      spotifyAccount = who;
+      if (vault) await writeFile(spotifyFile, vault.encrypt(JSON.stringify({ spDc })));
+      importSpotify();
+      return who;
+    },
+    async disconnectSpotify() {
+      spotify.setSession(null);
+      spotifyAccount = null;
+      importState = { state: "idle" };
+      await rm(spotifyFile, { force: true });
     },
     async signOutYouTube() {
       await youtubeAuth.clear();
