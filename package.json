@@ -62,7 +62,7 @@
           ]
         }
       ],
-      "icon": "build/icon.png",
+      "icon": "build/icon.ico",
       "artifactName": "LUMA-Setup-${version}.exe"
     },
     "nsis": {
