@@ -69,21 +69,23 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
   let importState = { state: "idle" };
   let matches = {};
   try {
-    matches = JSON.parse(await readFile(matchFile, "utf8"));
+    // Only found songs are remembered: a song not found is looked for again next import.
+    matches = Object.fromEntries(Object.entries(JSON.parse(await readFile(matchFile, "utf8"))).filter(([, v]) => v));
   } catch { /* first import */ }
 
   /** The YouTube Music recording of a Spotify track, or null when unsure. */
   async function matchOnYouTube(t) {
     if (t.spotifyId in matches) return matches[t.spotifyId];
     const first = t.artist.split(",")[0];
-    const res = await ytmusic.search(`${t.title} ${first}`).catch(() => null);
+    // A failed search throws (and isn't remembered); only "no such song" is a null.
+    const res = await ytmusic.search(`${t.title} ${first}`);
     const songs = res?.songs ?? [];
     const pick = bestMatch(
       { title: t.title, artist: t.artist, duration: t.duration },
       songs.map((s) => ({ ...s, artists: s.artist.split(/,\s*|\s&\s/) })),
     );
     const hit = pick ? cleanTrack({ ...pick, art: pick.art ?? t.art }) : null;
-    matches[t.spotifyId] = hit;
+    if (hit) matches[t.spotifyId] = hit;
     return hit;
   }
 
@@ -92,31 +94,53 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
     importState = { state: "running", done: 0, total: 0, phase: "Reading your Spotify library" };
     try {
       const liked = await spotify.likedSongs();
+      log(`spotify: ${liked.length} liked songs`);
       const lists = await spotify.playlists();
       const sets = [{ source: "spotify:liked", name: "Liked Songs (Spotify)", art: null, tracks: liked }];
+      const unread = [];
       for (const p of lists) {
         importState.phase = `Reading "${p.name}"`;
-        sets.push({ source: `spotify:${p.id}`, name: p.name, art: p.art, tracks: await spotify.playlistTracks(p.id).catch(() => []) });
+        let tracks = [];
+        try {
+          tracks = await spotify.playlistTracks(p.id);
+          log(`spotify: "${p.name}" has ${tracks.length} songs`);
+        } catch (e) {
+          // One playlist that won't read shouldn't stop the rest; it keeps what it had.
+          log(`spotify: couldn't read "${p.name}": ${e.message}`);
+          unread.push(p.name);
+        }
+        sets.push({ source: `spotify:${p.id}`, name: p.name, art: p.art, tracks, unread: unread.includes(p.name) });
       }
       const all = new Map();
       for (const s of sets) for (const t of s.tracks) all.set(t.spotifyId, t);
       importState = { state: "running", done: 0, total: all.size, phase: "Finding your songs on YouTube Music" };
       const queue = [...all.values()];
       let unmatched = 0;
+      let failed = 0;
+      let lastError = null;
       await Promise.all(Array.from({ length: 6 }, async () => {
         for (let t = queue.shift(); t; t = queue.shift()) {
-          if (!(await matchOnYouTube(t))) unmatched++;
+          try {
+            if (!(await matchOnYouTube(t))) unmatched++;
+          } catch (e) {
+            failed++;
+            lastError = e.message;
+          }
           importState.done++;
         }
       }));
       await writeFile(matchFile, JSON.stringify(matches));
+      if (failed) log(`spotify: ${failed} YouTube Music searches failed (last: ${lastError})`);
+      if (all.size && failed === all.size) throw new Error(`Couldn't reach YouTube Music to find your songs (${lastError}). Nothing was changed; try again.`);
       for (const s of sets) {
+        if (s.unread) continue;
         const tracks = s.tracks.map((t) => matches[t.spotifyId]).filter(Boolean);
         const seen = new Set();
         store.upsertImported(s.source, s.name, tracks.filter((t) => !seen.has(t.id) && seen.add(t.id)), s.art);
       }
-      importState = { state: "done", at: Date.now(), playlists: sets.length, songs: all.size, unmatched };
-      log(`spotify: imported ${sets.length} playlists, ${all.size} songs (${unmatched} not found on YouTube Music)`);
+      const found = all.size - unmatched - failed;
+      importState = { state: "done", at: Date.now(), playlists: sets.length, songs: all.size, found, unmatched: unmatched + failed, unread: unread.length };
+      log(`spotify: imported ${sets.length} playlists, ${all.size} songs: ${found} found on YouTube Music, ${unmatched} not found, ${failed} searches failed, ${unread.length} playlists unreadable`);
     } catch (e) {
       log(`spotify import failed: ${e.message}`);
       importState = { state: "failed", error: e.message, code: e.code };

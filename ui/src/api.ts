@@ -37,7 +37,7 @@ export type DownloadState = Record<string, { state: "running" | "done" | "failed
 export type SpotifyImport =
   | { state: "idle" }
   | { state: "running"; done: number; total: number; phase: string }
-  | { state: "done"; at: number; playlists: number; songs: number; unmatched: number }
+  | { state: "done"; at: number; playlists: number; songs: number; found?: number; unmatched: number; unread?: number }
   | { state: "failed"; error: string; code?: string };
 export type SpotifyStatus = { connected: boolean; canConnect: boolean; account: { name: string | null } | null; import: SpotifyImport };
 export type SpotifySignIn = { ok: { name: string | null } | false; error?: string; cancelled?: boolean };

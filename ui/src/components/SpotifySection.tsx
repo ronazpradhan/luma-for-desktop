@@ -148,7 +148,9 @@ export function SpotifySection() {
             <>
               <span className="muted small">
                 {imp.state === "done"
-                  ? `Imported ${imp.playlists} playlists, ${imp.songs} songs${imp.unmatched ? ` (${imp.unmatched} not found on YouTube Music)` : ""}.`
+                  ? imp.songs === 0
+                    ? `Found ${imp.playlists} playlists, but Spotify sent no songs in them.${imp.unread ? ` ${imp.unread} couldn't be read.` : ""} The log (luma.log) says why.`
+                    : `Imported ${imp.playlists} playlists: ${imp.found ?? imp.songs - imp.unmatched} of ${imp.songs} songs found on YouTube Music.${imp.unread ? ` ${imp.unread} playlists couldn't be read.` : ""}`
                   : imp.state === "failed" ? `The import stopped: ${imp.error}` : "Not imported yet."}
               </span>
               <button className="btn btn-quiet" onClick={importAgain}>{imp.state === "idle" ? "Import now" : "Import again"}</button>

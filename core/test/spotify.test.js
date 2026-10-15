@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
-import { cleanSpDc, extractClientVersion, parseTrack, spDcFromJar, totp } from "../spotify.js";
+import { cleanSpDc, extractClientVersion, libraryItem, parseTrack, spDcFromJar, totp } from "../spotify.js";
 import { parseNetscape } from "../youtube-auth.js";
 import { openStore } from "../store.js";
 
@@ -65,4 +65,17 @@ test("sp_dc is found in a cookies file, and only Spotify's counts", () => {
   ].join("\n"));
   assert.equal(spDcFromJar(jar), SP_DC);
   assert.equal(spDcFromJar(parseNetscape(".spotify.com\tTRUE\t/\tTRUE\t0\tsp_t\tx")), null);
+});
+
+test("a Liked Songs item whose uri is only on the wrapper still counts (as on Android)", () => {
+  const t = libraryItem({
+    addedAt: { isoString: "2026-10-01T10:00:00Z" },
+    track: {
+      _uri: "spotify:track:oct",
+      data: { name: "we fell in love in october", artists: { items: [{ profile: { name: "girl in red" } }] }, trackDuration: { totalMilliseconds: 184_000 } },
+    },
+  });
+  assert.equal(t?.spotifyId, "oct");
+  assert.equal(t?.title, "we fell in love in october");
+  assert.equal(libraryItem({ track: { _uri: "spotify:episode:1", data: { name: "x", artists: { items: [{ profile: { name: "y" } }] } } } }), null);
 });

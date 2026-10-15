@@ -141,7 +141,10 @@ export function createSpotify({ fetchImpl = fetch, log = () => {} } = {}) {
       return graphql(operationName, variables, true);
     }
     if (!r.ok) throw new Error(`Spotify answered ${r.status} for ${operationName}`);
-    return JSON.parse(text);
+    const j = JSON.parse(text);
+    // Pathfinder answers 200 with an errors list when a query is refused.
+    if (j.errors?.length && !j.data) throw new Error(`Spotify refused ${operationName}: ${j.errors[0]?.message ?? "unknown error"}`);
+    return j;
   }
 
   return {
@@ -163,8 +166,9 @@ export function createSpotify({ fetchImpl = fetch, log = () => {} } = {}) {
       const out = [];
       for (let offset = 0; offset < cap; offset += 50) {
         const j = await graphql("fetchLibraryTracks", { offset, limit: 50 });
-        const items = j.data?.me?.library?.tracks?.items ?? j.data?.me?.libraryTracks?.items ?? [];
-        out.push(...items.map((w) => parseTrack(w.track?.data ?? w.item?.data ?? w.itemV2?.data)).filter(Boolean));
+        const items = j.data?.me?.library?.tracks?.items ?? j.data?.me?.libraryTracks?.items;
+        if (!items) throw new Error(`Spotify's Liked Songs came back in a shape LUMA doesn't know (${Object.keys(j.data?.me ?? j.data ?? {}).join(", ") || "empty"})`);
+        out.push(...items.map(libraryItem).filter(Boolean));
         if (items.length < 50) break;
       }
       return out;
@@ -195,7 +199,8 @@ export function createSpotify({ fetchImpl = fetch, log = () => {} } = {}) {
       const out = [];
       for (let offset = 0; offset < cap; offset += 100) {
         const j = await graphql("fetchPlaylist", { uri: `spotify:playlist:${id}`, offset, limit: 100, enableWatchFeedEntrypoint: false });
-        const items = j.data?.playlistV2?.content?.items ?? [];
+        const items = j.data?.playlistV2?.content?.items;
+        if (!items) throw new Error(`Spotify sent no tracks for this playlist (${j.data?.playlistV2?.__typename ?? "empty answer"})`);
         out.push(...items.map((w) => parseTrack(w.itemV2?.data)).filter(Boolean));
         if (items.length < 100) break;
       }
@@ -204,14 +209,24 @@ export function createSpotify({ fetchImpl = fetch, log = () => {} } = {}) {
   };
 }
 
+/**
+ * A Liked Songs item: the track's data is under track.data, and its uri is
+ * often only on the wrapper (track._uri), as LUMA for Android reads it.
+ */
+export function libraryItem(w) {
+  const wrap = w?.track ?? w?.item ?? w?.itemV2;
+  return parseTrack(wrap?.data, wrap?._uri ?? wrap?.uri);
+}
+
 /** A Spotify track as LUMA needs it to find the same recording on YouTube Music. */
-export function parseTrack(d) {
-  if (!d || !d.uri?.startsWith("spotify:track:")) return null;
+export function parseTrack(d, fallbackUri = null) {
+  const uri = d?.uri ?? fallbackUri;
+  if (!d || !uri?.startsWith("spotify:track:")) return null;
   const artists = (d.artists?.items ?? []).map((a) => a.profile?.name).filter(Boolean);
   if (!d.name || !artists.length) return null;
   const ms = d.trackDuration?.totalMilliseconds ?? d.duration?.totalMilliseconds ?? 0;
   return {
-    spotifyId: d.uri.slice("spotify:track:".length),
+    spotifyId: uri.slice("spotify:track:".length),
     title: d.name,
     artist: artists.join(", "),
     album: d.albumOfTrack?.name ?? null,
