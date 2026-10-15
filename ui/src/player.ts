@@ -50,6 +50,16 @@ const audio = new Audio();
 export const playbackClock = () => ({ time: audio.currentTime, playing: !audio.paused });
 audio.preload = "auto";
 let loadToken = 0;
+/**
+ * Where the song should be by the clock: set when it starts playing, pauses or
+ * is seeked. A stream that breaks can make the player jump to the end and
+ * report "ended" mid-song; this tells that apart from a real ending.
+ */
+let anchor = { pos: 0, at: 0, running: false };
+const expectedPosition = () => anchor.pos + (anchor.running ? (performance.now() - anchor.at) / 1000 : 0);
+const setAnchor = (running: boolean) => { anchor = { pos: audio.currentTime, at: performance.now(), running }; };
+/** One recovery per song start, so a song that keeps breaking is skipped, not retried forever. */
+let recovered = -1;
 const resolved = new Map<string, Promise<Resolved>>();
 
 function lookUp(t: Track) {
@@ -78,6 +88,7 @@ export const usePlayer = create<PlayerState>((set, get) => {
     const track = queue[index];
     if (!track) return;
     const token = ++loadToken;
+    recovered = -1;
     audio.pause();
     set({ index, loading: true, playing: false, position: 0, duration: track.duration ?? 0, source: null });
     updateSession(track);
@@ -103,16 +114,19 @@ export const usePlayer = create<PlayerState>((set, get) => {
     }
   }
 
-  async function startOnline(index: number) {
+  /** Looks [index] up again, skipping any download, and plays it from [from] seconds. */
+  async function startOnline(index: number, from = 0) {
     const track = get().queue[index];
     if (!track) return;
     const token = ++loadToken;
+    recovered = token;
     set({ loading: true });
     try {
       const source = await api.resolve(track, true);
       if (token !== loadToken) return;
       set({ source });
       audio.src = streamUrl(track.id, true);
+      if (from > 1) audio.addEventListener("loadedmetadata", () => { audio.currentTime = from; }, { once: true });
       await audio.play();
     } catch (e) {
       if (token !== loadToken || (e as Error).name === "AbortError") return;
@@ -147,14 +161,41 @@ export const usePlayer = create<PlayerState>((set, get) => {
     set({ playing: false });
   }
 
-  audio.addEventListener("playing", () => set({ playing: true, loading: false }));
-  audio.addEventListener("pause", () => set({ playing: false }));
-  audio.addEventListener("waiting", () => set({ loading: true }));
+  /** Mid-song breakage: pick the song up again where it was, once; else skip it. */
+  function recover(t: Track, at: number, why: string) {
+    const fresh = recovered !== loadToken;
+    api.log(`"${t.title}" (${t.id}) broke at ${at.toFixed(1)} s from ${get().source?.source ?? "?"}: ${why}${fresh ? "; looking it up again" : "; skipping"}`);
+    resolved.delete(t.id);
+    if (fresh) {
+      if (get().source?.source === "download") toast(`The download of "${t.title}" won't play, so it's streaming instead.`);
+      startOnline(get().index, at);
+      return;
+    }
+    toast(`"${t.title}" keeps stopping (${why}). Skipping it.`);
+    setTimeout(() => advance(true), 1200);
+  }
+
+  audio.addEventListener("playing", () => {
+    setAnchor(true);
+    set({ playing: true, loading: false });
+  });
+  audio.addEventListener("pause", () => {
+    setAnchor(false);
+    set({ playing: false });
+  });
+  audio.addEventListener("seeked", () => setAnchor(!audio.paused));
+  audio.addEventListener("waiting", () => {
+    setAnchor(false);
+    set({ loading: true });
+  });
   audio.addEventListener("canplay", () => set({ loading: false }));
   audio.addEventListener("loadedmetadata", () => Number.isFinite(audio.duration) && set({ duration: audio.duration }));
   audio.addEventListener("ended", () => {
     const t = get().current();
-    api.log(`ended "${t?.title}" at ${audio.currentTime.toFixed(1)} of ${audio.duration.toFixed(1)} s`);
+    const expected = expectedPosition();
+    api.log(`ended "${t?.title}" at ${audio.currentTime.toFixed(1)} of ${audio.duration.toFixed(1)} s (by the clock ${expected.toFixed(1)} s)`);
+    // The player jumped to the end: the stream broke, the song didn't finish.
+    if (t && Number.isFinite(audio.duration) && audio.duration - expected > 5) return recover(t, expected, "ended early");
     advance(true);
   });
   audio.addEventListener("error", () => {
@@ -162,15 +203,8 @@ export const usePlayer = create<PlayerState>((set, get) => {
     if (!t || !audio.src) return;
     const why = `media error ${audio.error?.code ?? "?"}${audio.error?.message ? `: ${audio.error.message}` : ""}`;
     api.log(`"${t.title}" (${t.id}) failed from ${get().source?.source ?? "?"}: ${why}`);
-    resolved.delete(t.id);
-    // A downloaded file that won't play is streamed instead of skipped.
-    if (get().source?.source === "download") {
-      toast(`The download of "${t.title}" won't play, so it's streaming instead.`);
-      startOnline(get().index);
-      return;
-    }
-    toast(`"${t.title}" stopped loading (${why}). Skipping it.`);
-    setTimeout(() => advance(true), 1200);
+    // A download that won't play, or a stream that broke mid-song, is picked up again.
+    recover(t, expectedPosition(), why);
   });
   let lastPrefetch = "";
   audio.addEventListener("timeupdate", () => {

@@ -240,7 +240,16 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
         const meta = store.snapshot().history.find((h) => h.track.id === id)?.track;
         resolver.forget(id);
         if (!meta) throw new HttpError(410, "stream expired");
+        const was = stream;
         stream = await resolver.resolve(meta);
+        // Mid-song, the bytes must come from the very same file: another source
+        // or format there would feed the player garbage, and it would jump to the
+        // end. The player looks the song up again and resumes at the same spot.
+        const midSong = !/bytes=0-/.test(req.headers.range ?? "bytes=0-");
+        if (midSong && (stream.source !== was.source || stream.codec !== was.codec || stream.size !== was.size)) {
+          log(`stream for ${id} died mid-song and the new one is a different file (${was.source} ${was.codec} -> ${stream.source} ${stream.codec})`);
+          throw new HttpError(410, "stream changed");
+        }
         continue;
       }
       const out = { "Accept-Ranges": "bytes", "Content-Type": up.headers.get("content-type") ?? "audio/mp4", "Cache-Control": "no-store" };
