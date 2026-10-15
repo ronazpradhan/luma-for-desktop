@@ -314,9 +314,11 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
         return send(res, 200, await lyrics.get(track((await body(req)).track)));
       case "POST resolve": {
         const t = track((await body(req)).track);
+        log(`play "${t.title}" by ${t.artist} (${t.id})`);
         const local = store.download(t.id);
         if (local) return send(res, 200, { source: "download", codec: local.type === "audio/webm" ? "opus" : "aac" });
         const s = await resolver.resolve(t).catch((e) => {
+          log(`could not play "${t.title}" (${t.id}): ${e.code ?? ""} ${e.message}`);
           const err = new HttpError(502, e.code ? e.message : `Couldn't find this song (${e.message})`);
           err.code = e.code;
           throw err;

@@ -97,7 +97,7 @@ export const usePlayer = create<PlayerState>((set, get) => {
         ? `"${track.title}" needs YouTube. Connect YouTube in Settings to play songs like it.`
         : code === "YOUTUBE_BLOCKED"
           ? `YouTube is refusing this PC right now. Skipping "${track.title}".`
-          : `Couldn't play "${track.title}". Skipping it.`);
+          : `Couldn't play "${track.title}" (${(e as Error).message}). Skipping it.`);
       setTimeout(() => token === loadToken && advance(true), 1200);
     }
   }

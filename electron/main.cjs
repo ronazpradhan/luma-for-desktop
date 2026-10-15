@@ -42,7 +42,7 @@ async function start() {
     vault: safeStorage.isEncryptionAvailable()
       ? { encrypt: (text) => safeStorage.encryptString(text), decrypt: (buf) => safeStorage.decryptString(buf) }
       : null,
-    log: (m) => console.log(m),
+    log: writeLog,
   });
   origin = `http://127.0.0.1:${engine.port}`;
 
@@ -139,6 +139,22 @@ async function outcome(job) {
 
 function refused() {
   return { ok: false, error: "Not allowed" };
+}
+
+// ---- log ----------------------------------------------------------------------
+// What happened to each song, in luma.log in LUMA's data folder (kept under
+// ~1 MB; the previous one is luma.old.log). No cookies or keys are written.
+
+function writeLog(message) {
+  console.log(message);
+  try {
+    const file = path.join(app.getPath("userData"), "luma.log");
+    const size = fs.existsSync(file) ? fs.statSync(file).size : 0;
+    if (size > 1_000_000) fs.renameSync(file, path.join(app.getPath("userData"), "luma.old.log"));
+    fs.appendFileSync(file, `${new Date().toISOString()} ${message}\n`);
+  } catch {
+    // Logging must never break playback.
+  }
 }
 
 let quitting = false;
