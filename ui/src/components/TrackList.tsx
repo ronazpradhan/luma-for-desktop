@@ -75,11 +75,11 @@ function TrackRow({ track, index, numbered, showArt, showAlbum, playlistId, onPl
         ) : downloaded ? (
           <Download size={14} className="row-downloaded" aria-label="Downloaded" />
         ) : null}
-        <button className={`icon-btn row-like ${liked ? "is-on" : ""}`} onClick={() => toggleLike(track)} aria-label={liked ? "Remove from Liked songs" : "Add to Liked songs"} aria-pressed={liked}>
+        <button className={`icon-btn row-like ${liked ? "is-on" : ""}`} onClick={() => toggleLike(track)} aria-label={liked ? "Remove from Liked songs" : "Add to Liked songs"} title={liked ? "Remove from Liked songs" : "Add to Liked songs"} aria-pressed={liked}>
           <Heart size={16} fill={liked ? "currentColor" : "none"} />
         </button>
         <span className="row-time">{formatTime(track.duration)}</span>
-        <button className="icon-btn row-more" onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); openMenu(track, r.left - 200, r.bottom + 4, playlistId); }} aria-label="More">
+        <button className="icon-btn row-more" onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); openMenu(track, r.left - 200, r.bottom + 4, playlistId); }} aria-label="More" title="More">
           <MoreHorizontal size={18} />
         </button>
       </div>

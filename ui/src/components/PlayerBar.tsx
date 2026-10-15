@@ -46,24 +46,17 @@ export function Transport({ big = false }: { big?: boolean }) {
   const size = big ? 30 : 20;
   return (
     <div className={`transport ${big ? "transport-big" : ""}`}>
-      <button className={`icon-btn ${p.shuffle ? "is-on" : ""}`} onClick={p.toggleShuffle} aria-label="Shuffle" aria-pressed={p.shuffle}><Shuffle size={big ? 20 : 17} /></button>
-      <button className="icon-btn" onClick={p.previous} aria-label="Previous"><SkipBack size={size} fill="currentColor" /></button>
-      <button className="play-btn" onClick={p.toggle} aria-label={p.playing ? "Pause" : "Play"} disabled={!p.current()}>
+      <button className={`icon-btn ${p.shuffle ? "is-on" : ""}`} onClick={p.toggleShuffle} aria-label="Shuffle" title="Shuffle" aria-pressed={p.shuffle}><Shuffle size={big ? 20 : 17} /></button>
+      <button className="icon-btn" onClick={p.previous} aria-label="Previous" title="Previous"><SkipBack size={size} fill="currentColor" /></button>
+      <button className="play-btn" onClick={p.toggle} aria-label={p.playing ? "Pause" : "Play"} title={p.playing ? "Pause" : "Play"} disabled={!p.current()}>
         {p.loading ? <Spinner size={big ? 26 : 18} /> : p.playing ? <Pause size={size} fill="currentColor" /> : <Play size={size} fill="currentColor" />}
       </button>
-      <button className="icon-btn" onClick={p.next} aria-label="Next"><SkipForward size={size} fill="currentColor" /></button>
-      <button className={`icon-btn ${p.repeat !== "off" ? "is-on" : ""}`} onClick={p.cycleRepeat} aria-label={`Repeat: ${p.repeat}`}>
+      <button className="icon-btn" onClick={p.next} aria-label="Next" title="Next"><SkipForward size={size} fill="currentColor" /></button>
+      <button className={`icon-btn ${p.repeat !== "off" ? "is-on" : ""}`} onClick={p.cycleRepeat} aria-label={p.repeat === "off" ? "Repeat" : p.repeat === "all" ? "Repeat all" : "Repeat one"} title={p.repeat === "off" ? "Repeat" : p.repeat === "all" ? "Repeat all" : "Repeat one"}>
         {p.repeat === "one" ? <Repeat1 size={big ? 20 : 17} /> : <Repeat size={big ? 20 : 17} />}
       </button>
     </div>
   );
-}
-
-export function SourceBadge() {
-  const source = usePlayer((s) => s.source);
-  if (!source) return null;
-  const label = source.source === "download" ? "Downloaded" : `${source.codec === "opus" ? "Opus" : "AAC"}${source.kbps ? ` ${source.kbps}` : ""}`;
-  return <span className="badge" title={source.source === "jiosaavn" ? "Streaming from JioSaavn" : source.source === "youtube" ? "Streaming from YouTube" : "Playing from this PC"}>{label}</span>;
 }
 
 export function PlayerBar() {
@@ -81,7 +74,7 @@ export function PlayerBar() {
       <div className="pb-track">
         {track ? (
           <>
-            <button key={track.id} className="pb-art" onClick={() => p.setNowPlaying(true)} aria-label="Open Now Playing">
+            <button key={track.id} className="pb-art" onClick={() => p.setNowPlaying(true)} aria-label="Open Now Playing" title="Open Now Playing">
               <Art src={track.art} size={56} />
               <span className="pb-expand"><Maximize2 size={16} /></span>
             </button>
@@ -91,7 +84,7 @@ export function PlayerBar() {
                 {track.artistId ? <button className="link" onClick={() => go({ name: "artist", id: track.artistId! })}>{track.artist}</button> : track.artist}
               </div>
             </div>
-            <button className={`icon-btn pb-like ${liked ? "is-on" : ""}`} onClick={() => lib.toggleLike(track)} aria-label={liked ? "Remove from Liked songs" : "Add to Liked songs"} aria-pressed={liked}>
+            <button className={`icon-btn pb-like ${liked ? "is-on" : ""}`} onClick={() => lib.toggleLike(track)} aria-label={liked ? "Remove from Liked songs" : "Add to Liked songs"} title={liked ? "Remove from Liked songs" : "Add to Liked songs"} aria-pressed={liked}>
               <Heart size={18} fill={liked ? "currentColor" : "none"} />
             </button>
           </>
@@ -104,7 +97,6 @@ export function PlayerBar() {
         <Seek />
       </div>
       <div className="pb-right">
-        <SourceBadge />
         {track && (
           dl?.state === "running" ? (
             <span className="dl-ring big" style={{ ["--p" as string]: dl.progress }} aria-label="Downloading" />
@@ -114,9 +106,9 @@ export function PlayerBar() {
             </button>
           )
         )}
-        <button className={`icon-btn ${p.nowPlayingOpen ? "is-on" : ""}`} onClick={() => p.setNowPlaying(!p.nowPlayingOpen)} aria-label="Lyrics" disabled={!track}><Mic2 size={18} /></button>
-        <button className={`icon-btn ${p.queueOpen ? "is-on" : ""}`} onClick={() => p.setQueueOpen(!p.queueOpen)} aria-label="Queue"><ListMusic size={18} /></button>
-        <button className="icon-btn" onClick={p.toggleMute} aria-label={p.muted ? "Unmute" : "Mute"}><VolIcon size={18} /></button>
+        <button className={`icon-btn ${p.nowPlayingOpen ? "is-on" : ""}`} onClick={() => p.setNowPlaying(!p.nowPlayingOpen)} aria-label="Lyrics" title="Lyrics" disabled={!track}><Mic2 size={18} /></button>
+        <button className={`icon-btn ${p.queueOpen ? "is-on" : ""}`} onClick={() => p.setQueueOpen(!p.queueOpen)} aria-label="Queue" title="Queue"><ListMusic size={18} /></button>
+        <button className="icon-btn" onClick={p.toggleMute} aria-label={p.muted ? "Unmute" : "Mute"} title={p.muted ? "Unmute" : "Mute"}><VolIcon size={18} /></button>
         <input type="range" className="range volume" min={0} max={1} step={0.01} value={p.muted ? 0 : p.volume} style={{ ["--fill" as string]: `${(p.muted ? 0 : p.volume) * 100}%` }} onChange={(e) => p.setVolume(Number(e.target.value))} aria-label="Volume" />
       </div>
     </footer>

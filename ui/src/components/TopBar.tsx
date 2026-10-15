@@ -53,7 +53,7 @@ export function TopBar() {
 
   return (
     <header className="topbar">
-      <button className="icon-btn round" onClick={back} disabled={!canBack} aria-label="Back"><ChevronLeft size={20} /></button>
+      <button className="icon-btn round" onClick={back} disabled={!canBack} aria-label="Back" title="Back"><ChevronLeft size={20} /></button>
       <form className={`searchbox ${open && suggestions.length ? "has-list" : ""}`} role="search" onSubmit={(e) => { e.preventDefault(); submit(active >= 0 ? suggestions[active] : text); }}>
         <Search size={17} aria-hidden />
         <input
@@ -71,7 +71,7 @@ export function TopBar() {
             if (e.key === "Escape") { setOpen(false); input.current?.blur(); }
           }}
         />
-        {text && <button type="button" className="icon-btn" aria-label="Clear search" onClick={() => { setText(""); input.current?.focus(); }}><X size={16} /></button>}
+        {text && <button type="button" className="icon-btn" aria-label="Clear search" title="Clear search" onClick={() => { setText(""); input.current?.focus(); }}><X size={16} /></button>}
         {open && suggestions.length > 0 && (
           <ul className="suggest glass" role="listbox">
             {suggestions.map((s, i) => (

@@ -14,8 +14,8 @@ export function Shelf({ title, items }: { title: string; items: Tile[] }) {
       <header className="shelf-head">
         <h2>{title}</h2>
         <div className="shelf-arrows">
-          <button className="icon-btn" onClick={() => scroll(-1)} aria-label="Scroll left"><ChevronLeft size={18} /></button>
-          <button className="icon-btn" onClick={() => scroll(1)} aria-label="Scroll right"><ChevronRight size={18} /></button>
+          <button className="icon-btn" onClick={() => scroll(-1)} aria-label="Scroll left" title="Scroll left"><ChevronLeft size={18} /></button>
+          <button className="icon-btn" onClick={() => scroll(1)} aria-label="Scroll right" title="Scroll right"><ChevronRight size={18} /></button>
         </div>
       </header>
       <div className="shelf-row" ref={ref}>

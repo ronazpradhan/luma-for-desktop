@@ -12,7 +12,7 @@ export function Sidebar() {
   const createPlaylist = useLibrary((s) => s.createPlaylist);
 
   const item = (r: Route, icon: React.ReactNode, label: string) => (
-    <button className={`nav-item ${route.name === r.name ? "is-active" : ""}`} onClick={() => go(r)} aria-current={route.name === r.name ? "page" : undefined}>
+    <button className={`nav-item ${route.name === r.name ? "is-active" : ""}`} onClick={() => go(r)} title={label} aria-current={route.name === r.name ? "page" : undefined}>
       {icon}
       <span>{label}</span>
     </button>
@@ -37,22 +37,22 @@ export function Sidebar() {
           </button>
         </div>
         <div className="side-list">
-          <button className={`side-row ${route.name === "liked" ? "is-active" : ""}`} onClick={() => go({ name: "liked" })}>
+          <button className={`side-row ${route.name === "liked" ? "is-active" : ""}`} onClick={() => go({ name: "liked" })} title="Liked songs" aria-current={route.name === "liked" ? "page" : undefined}>
             <span className="side-icon liked"><Heart size={15} fill="currentColor" /></span>
             <span className="side-text"><b>Liked songs</b><small>{likes} {likes === 1 ? "song" : "songs"}</small></span>
           </button>
-          <button className={`side-row ${route.name === "downloads" ? "is-active" : ""}`} onClick={() => go({ name: "downloads" })}>
+          <button className={`side-row ${route.name === "downloads" ? "is-active" : ""}`} onClick={() => go({ name: "downloads" })} title="Downloads" aria-current={route.name === "downloads" ? "page" : undefined}>
             <span className="side-icon"><Download size={15} /></span>
             <span className="side-text"><b>Downloads</b><small>On this PC</small></span>
           </button>
           {ytPlaylists.map((p) => (
-            <button key={`yt-${p.id}`} className={`side-row ${route.name === "ytplaylist" && route.id === p.id ? "is-active" : ""}`} onClick={() => go({ name: "ytplaylist", id: p.id })}>
+            <button key={`yt-${p.id}`} className={`side-row ${route.name === "ytplaylist" && route.id === p.id ? "is-active" : ""}`} onClick={() => go({ name: "ytplaylist", id: p.id })} title={p.title}>
               {p.id === "LM" ? <span className="side-icon yt"><Heart size={15} fill="currentColor" /></span> : <Art src={p.art} size={36} />}
               <span className="side-text"><b>{p.title}</b><small>YouTube Music</small></span>
             </button>
           ))}
           {playlists.map((p) => (
-            <button key={p.id} className={`side-row ${route.name === "playlist" && route.id === p.id ? "is-active" : ""}`} onClick={() => go({ name: "playlist", id: p.id })}>
+            <button key={p.id} className={`side-row ${route.name === "playlist" && route.id === p.id ? "is-active" : ""}`} onClick={() => go({ name: "playlist", id: p.id })} title={p.name}>
               <Art src={p.art} size={36} />
               <span className="side-text"><b>{p.name}</b><small>{p.tracks.length} {p.tracks.length === 1 ? "song" : "songs"}</small></span>
             </button>

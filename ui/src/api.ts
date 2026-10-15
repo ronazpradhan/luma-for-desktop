@@ -78,6 +78,19 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<T>
   return data as T;
 }
 
+/**
+ * An error in the listener's words. The engine's own wording (network codes,
+ * helper programs, file paths) stays in luma.log, where it helps fix things.
+ */
+export function plainError(message?: string | null): string {
+  const m = message ?? "";
+  if (/fetch failed|network|ENOTFOUND|ECONN|ETIMEDOUT|timed? ?out|aborted|offline/i.test(m)) return "LUMA can't reach the internet right now. Check your connection and try again.";
+  if (/yt-dlp|spawn|ENOENT|unpack|checksum/i.test(m)) return "LUMA's YouTube helper isn't ready yet. Try again in a minute.";
+  if (/couldn't find|not found|no source/i.test(m)) return "LUMA couldn't find this anywhere it looks.";
+  if (/^LUMA's engine answered|^\d{3}\b|answered \d{3}/i.test(m)) return "Something went wrong on LUMA's side. Try again.";
+  return m || "Something went wrong. Try again.";
+}
+
 /** Only what the library stores; extra fields from search rows are dropped. */
 export function slim(t: Track): Track {
   return { id: t.id, title: t.title, artist: t.artist, artistId: t.artistId ?? null, album: t.album ?? null, albumId: t.albumId ?? null, duration: t.duration ?? null, art: t.art ?? null };

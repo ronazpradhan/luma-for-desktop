@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { img } from "../api";
+import { img, plainError } from "../api";
 
 /** Artwork through the engine, with the crescent standing in when there is none. */
 export function Art({ src, size, round = false, className = "" }: { src?: string | null; size?: number; round?: boolean; className?: string }) {
@@ -61,7 +61,7 @@ export function Failed({ message, onRetry }: { message: string; onRetry?: () => 
   return (
     <div className="empty">
       <h3>That didn't load</h3>
-      <p>{message}</p>
+      <p>{plainError(message)}</p>
       {onRetry && <button className="btn" onClick={onRetry}>Try again</button>}
     </div>
   );

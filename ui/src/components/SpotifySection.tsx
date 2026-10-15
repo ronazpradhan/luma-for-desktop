@@ -65,7 +65,7 @@ export function SpotifySection() {
 
   const imp = status?.import;
   return (
-    <section className="settings-group glass">
+    <section className="settings-group">
       <div className="account-row">
         <span>
           <h2>Spotify</h2>

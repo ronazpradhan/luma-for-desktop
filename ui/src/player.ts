@@ -109,7 +109,7 @@ export const usePlayer = create<PlayerState>((set, get) => {
         ? `"${track.title}" needs YouTube. Connect YouTube in Settings to play songs like it.`
         : code === "YOUTUBE_BLOCKED"
           ? `YouTube is refusing this PC right now. Skipping "${track.title}".`
-          : `Couldn't play "${track.title}" (${(e as Error).message}). Skipping it.`);
+          : `Couldn't play "${track.title}". Skipping to the next song.`);
       setTimeout(() => token === loadToken && advance(true), 1200);
     }
   }
@@ -130,7 +130,8 @@ export const usePlayer = create<PlayerState>((set, get) => {
       await audio.play();
     } catch (e) {
       if (token !== loadToken || (e as Error).name === "AbortError") return;
-      toast(`Couldn't play "${track.title}" (${(e as Error).message}). Skipping it.`);
+      api.log(`"${track.title}" (${track.id}) didn't restart: ${(e as Error).message}`);
+      toast(`Couldn't play "${track.title}". Skipping to the next song.`);
       setTimeout(() => token === loadToken && advance(true), 1200);
     }
   }
@@ -171,7 +172,7 @@ export const usePlayer = create<PlayerState>((set, get) => {
       startOnline(get().index, at);
       return;
     }
-    toast(`"${t.title}" keeps stopping (${why}). Skipping it.`);
+    toast(`"${t.title}" keeps stopping. Skipping to the next song.`);
     setTimeout(() => advance(true), 1200);
   }
 

@@ -52,7 +52,7 @@ export function Settings() {
       <header className="page-hero">
         <h1 className="hello">Settings</h1>
       </header>
-      <section className="settings-group glass">
+      <section className="settings-group">
         <label className="toggle-row">
           <span>
             <b>Autoplay</b>
@@ -62,7 +62,7 @@ export function Settings() {
         </label>
       </section>
 
-      <section className="settings-group glass">
+      <section className="settings-group">
         <div className="account-row">
           <span>
             <h2>YouTube</h2>
@@ -118,19 +118,19 @@ export function Settings() {
 
       <SpotifySection />
 
-      <section className="settings-group glass">
+      <section className="settings-group">
         <h2>Where songs come from</h2>
-        <p>LUMA looks for each song on JioSaavn (AAC, up to 320 kbps) and YouTube at the same time, and plays whichever is ready first, preferring JioSaavn. Some YouTube songs come at lower quality (AAC 96) when YouTube only offers that without a sign-in; connecting YouTube below lets yt-dlp step in when neither has a song. Downloads are saved to the LUMA folder in your Music folder and play without internet.</p>
+        <p>LUMA looks for each song on JioSaavn and YouTube at once and plays whichever is ready first. Connecting YouTube above helps with songs that are hard to find. Downloads are saved to the LUMA folder in your Music folder and play without internet.</p>
       </section>
-      <section className="settings-group glass">
+      <section className="settings-group">
         <h2>About</h2>
         <dl className="about-list">
           <dt>LUMA for Windows</dt><dd>{status.data?.version ?? "…"}</dd>
-          <dt>YouTube helper (yt-dlp)</dt><dd>{status.data?.ytdlp ?? "…"}</dd>
+          <dt>YouTube helper</dt><dd>{!status.data ? "…" : /^unavailable/i.test(status.data.ytdlp) ? "Not ready yet" : status.data.ytdlp}</dd>
         </dl>
         <p className="muted small">Made by Ronaz Pradhan. LUMA for Android is a fork of Stash by rawnaldclark (GPL-3.0). YouTube playback follows Spotube's approach, with YouTube.js and yt-dlp. Lyrics from LRCLIB.</p>
       </section>
-      <section className="settings-group glass">
+      <section className="settings-group">
         <h2>Shortcuts</h2>
         <dl className="keys">
           <dt><kbd>Space</kbd></dt><dd>Play or pause</dd>

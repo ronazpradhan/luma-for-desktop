@@ -6,7 +6,7 @@ import { useNav } from "../nav";
 import { usePlayer } from "../player";
 import { Art } from "./bits";
 import { LyricsPane } from "./Lyrics";
-import { Seek, SourceBadge, Transport } from "./PlayerBar";
+import { Seek, Transport } from "./PlayerBar";
 
 /** Full-window player: the art large on the left, lyrics that follow the song on the right. */
 export function NowPlaying() {
@@ -40,9 +40,9 @@ export function NowPlaying() {
       {bg && <div key={track.id} className="np-backdrop" style={{ backgroundImage: `url("${bg}")` }} />}
       <div className="np-veil" />
       <header className="np-top">
-        <button className="icon-btn round" onClick={() => setOpen(false)} aria-label="Close Now Playing"><ChevronDown size={22} /></button>
+        <button className="icon-btn round" onClick={() => setOpen(false)} aria-label="Close Now Playing" title="Close Now Playing"><ChevronDown size={22} /></button>
         <span className="np-from">{sourceLabel ? `Playing from ${sourceLabel}` : ""}</span>
-        <button className={`icon-btn round ${queueOpen ? "is-on" : ""}`} onClick={() => setQueueOpen(!queueOpen)} aria-label="Queue"><ListMusic size={20} /></button>
+        <button className={`icon-btn round ${queueOpen ? "is-on" : ""}`} onClick={() => setQueueOpen(!queueOpen)} aria-label="Queue" title="Queue"><ListMusic size={20} /></button>
       </header>
       <div className="np-body">
         <section className="np-left">
@@ -58,13 +58,12 @@ export function NowPlaying() {
               </p>
             </div>
             <div className="np-actions">
-              <SourceBadge />
               {dl?.state === "running" ? (
                 <span className="dl-ring big" style={{ ["--p" as string]: dl.progress }} aria-label="Downloading" />
               ) : (
-                <button className={`icon-btn round ${downloaded ? "is-on" : ""}`} disabled={downloaded} onClick={() => lib.download([track])} aria-label={downloaded ? "Downloaded" : "Download"}><Download size={20} /></button>
+                <button className={`icon-btn round ${downloaded ? "is-on" : ""}`} disabled={downloaded} onClick={() => lib.download([track])} aria-label={downloaded ? "Downloaded" : "Download"} title={downloaded ? "Downloaded" : "Download"}><Download size={20} /></button>
               )}
-              <button className={`icon-btn round heart ${liked ? "is-on" : ""}`} onClick={() => lib.toggleLike(track)} aria-label={liked ? "Remove from Liked songs" : "Add to Liked songs"} aria-pressed={liked}>
+              <button className={`icon-btn round heart ${liked ? "is-on" : ""}`} onClick={() => lib.toggleLike(track)} aria-label={liked ? "Remove from Liked songs" : "Add to Liked songs"} title={liked ? "Remove from Liked songs" : "Add to Liked songs"} aria-pressed={liked}>
                 <Heart size={20} fill={liked ? "currentColor" : "none"} />
               </button>
             </div>

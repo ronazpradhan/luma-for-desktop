@@ -15,7 +15,7 @@ export function QueuePanel() {
     <aside className="queue glass" aria-label="Queue">
       <header className="queue-head">
         <h2>Queue</h2>
-        <button className="icon-btn" onClick={() => p.setQueueOpen(false)} aria-label="Close queue"><X size={18} /></button>
+        <button className="icon-btn" onClick={() => p.setQueueOpen(false)} aria-label="Close queue" title="Close queue"><X size={18} /></button>
       </header>
       {current && (
         <>
