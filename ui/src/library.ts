@@ -9,6 +9,8 @@ type LibraryState = Library & {
   /** Your playlists in YouTube Music (Liked music first), when YouTube is connected. */
   youtubePlaylists: Tile[];
   loadYouTube(): Promise<void>;
+  /** Removes a YouTube Music playlist from LUMA (or brings it back); YouTube itself is untouched. */
+  hideYouTube(id: string, hidden: boolean): Promise<void>;
   downloadState: DownloadState;
   load(): Promise<void>;
   refreshSoon(): void;
@@ -49,7 +51,7 @@ export const useLibrary = create<LibraryState>((set, get) => {
     playlists: [],
     history: [],
     downloads: {},
-    settings: { autoplay: true, volume: 0.8 },
+    settings: { autoplay: true, volume: 0.8, hiddenYouTube: [] },
     loaded: false,
     downloadState: {},
     youtubePlaylists: [],
@@ -57,6 +59,12 @@ export const useLibrary = create<LibraryState>((set, get) => {
     async loadYouTube() {
       const r = await api.youtubeLibrary().catch(() => null);
       set({ youtubePlaylists: r?.playlists ?? [] });
+    },
+
+    async hideYouTube(id, hidden) {
+      const now = get().settings.hiddenYouTube ?? [];
+      const next = hidden ? [...new Set([...now, id])] : now.filter((x) => x !== id);
+      set({ settings: await api.settings({ hiddenYouTube: next }) });
     },
 
     async load() {

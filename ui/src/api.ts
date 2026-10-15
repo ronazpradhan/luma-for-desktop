@@ -28,7 +28,7 @@ export type Library = {
   playlists: Playlist[];
   history: { track: Track; at: number }[];
   downloads: Record<string, { track: Track; at: number; size: number }>;
-  settings: { autoplay: boolean; volume: number };
+  settings: { autoplay: boolean; volume: number; hiddenYouTube?: string[] };
 };
 export type Lyrics = { synced: boolean; lines: { time: number | null; text: string }[] } | null;
 export type Resolved = { source: "jiosaavn" | "youtube" | "download"; codec: string; kbps?: number | null };

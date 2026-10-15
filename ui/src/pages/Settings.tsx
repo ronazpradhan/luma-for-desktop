@@ -19,6 +19,7 @@ export function Settings() {
   const [browsers, setBrowsers] = useState<string[]>([]);
   const yt = status.data?.youtube;
   const bridge = window.luma;
+  const hiddenYt = useLibrary((s) => s.settings.hiddenYouTube?.length ?? 0);
 
   useEffect(() => {
     bridge?.youtubeBrowsers().then(setBrowsers).catch(() => {});
@@ -114,6 +115,12 @@ export function Settings() {
           </>
         )}
         {yt?.canSignIn === false && <p className="muted small">Windows can't protect saved sign-ins on this PC, so LUMA can't keep one.</p>}
+        {hiddenYt > 0 && (
+          <div className="import-row">
+            <span className="muted small">{hiddenYt} YouTube Music {hiddenYt === 1 ? "playlist is" : "playlists are"} removed from LUMA.</span>
+            <button className="btn btn-quiet" onClick={async () => { useLibrary.setState({ settings: await api.settings({ hiddenYouTube: [] }) }); toast("Your YouTube Music playlists are back"); }}>Show again</button>
+          </div>
+        )}
       </section>
 
       <SpotifySection />

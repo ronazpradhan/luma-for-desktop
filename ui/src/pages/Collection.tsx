@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Download, Pencil, Play, Shuffle, Trash2 } from "lucide-react";
+import { Download, EyeOff, Pencil, Play, Shuffle, Trash2 } from "lucide-react";
 import { api, type Track } from "../api";
 import { Art, Empty, Failed, SkeletonRows } from "../components/bits";
 import { TrackList } from "../components/TrackList";
@@ -7,7 +7,7 @@ import { useLibrary } from "../library";
 import { useNav } from "../nav";
 import { usePlayer } from "../player";
 import { useAsync } from "./common";
-import { deletePlaylistAsk, useRenaming } from "../components/PlaylistMenu";
+import { deletePlaylistAsk, hideYouTubeAsk, useRenaming } from "../components/PlaylistMenu";
 
 type Header = { kind: string; title: string; subtitle?: string; art?: string | null; artistId?: string | null; artist?: string };
 
@@ -85,7 +85,12 @@ export function YtPlaylistPage({ id }: { id: string }) {
   const p = res.data;
   return (
     <CollectionView header={{ kind: "Playlist", title: p.title, art: p.art, subtitle: p.subtitle }} tracks={p.tracks} label={p.title}
-      extra={<button className="btn" onClick={async () => { const nid = await lib.createPlaylist(p.title, p.tracks); if (nid) go({ name: "playlist", id: nid }); }}>Save to your music</button>} />
+      extra={
+        <>
+          <button className="btn" onClick={async () => { const nid = await lib.createPlaylist(p.title, p.tracks); if (nid) go({ name: "playlist", id: nid }); }}>Save to your music</button>
+          {lib.youtubePlaylists.some((y) => y.id === id) && <button className="btn danger" onClick={() => hideYouTubeAsk(id, p.title)}><EyeOff size={16} /> Remove from LUMA</button>}
+        </>
+      } />
   );
 }
 

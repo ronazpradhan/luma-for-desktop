@@ -9,7 +9,7 @@ import path from "node:path";
 const HISTORY_CAP = 500;
 const FIELDS = ["id", "title", "artist", "artistId", "album", "albumId", "duration", "art"];
 
-const EMPTY = () => ({ version: 1, likes: [], playlists: [], history: [], downloads: {}, settings: { autoplay: true, volume: 0.8 } });
+const EMPTY = () => ({ version: 1, likes: [], playlists: [], history: [], downloads: {}, settings: { autoplay: true, volume: 0.8, hiddenYouTube: [] } });
 
 /** A track reduced to what the library keeps, or null if it isn't one. */
 export function cleanTrack(t) {

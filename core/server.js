@@ -502,6 +502,8 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
         const patch = {};
         if (typeof b.autoplay === "boolean") patch.autoplay = b.autoplay;
         if (Number.isFinite(b.volume)) patch.volume = Math.min(1, Math.max(0, b.volume));
+        // YouTube Music playlists the listener removed from LUMA (their account is untouched).
+        if (Array.isArray(b.hiddenYouTube)) patch.hiddenYouTube = [...new Set(b.hiddenYouTube.filter((x) => typeof x === "string" && /^[\w-]{1,80}$/.test(x)))].slice(0, 500);
         return send(res, 200, store.setSettings(patch));
       }
       default:
