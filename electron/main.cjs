@@ -7,6 +7,7 @@ const fs = require("node:fs");
 const crypto = require("node:crypto");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
+const { spawn } = require("node:child_process");
 
 const key = crypto.randomBytes(32).toString("hex");
 let engine = null;
@@ -99,6 +100,15 @@ async function start() {
     autoUpdater?.quitAndInstall(true, true);
     return true;
   });
+  ipcMain.handle("luma:can-uninstall", (event) => fromLuma(event) && !!uninstaller());
+  ipcMain.handle("luma:uninstall", (event) => {
+    const exe = fromLuma(event) && uninstaller();
+    if (!exe) return false;
+    // The uninstaller waits for LUMA to close, then asks about the library.
+    spawn(exe, [], { detached: true, stdio: "ignore" }).unref();
+    setTimeout(() => app.quit(), 300);
+    return true;
+  });
   ipcMain.handle("luma:youtube-sign-out", async (event) => {
     if (!fromLuma(event)) return false;
     await engine.signOutYouTube();
@@ -169,6 +179,15 @@ async function outcome(job) {
 
 function refused() {
   return { ok: false, error: "Not allowed" };
+}
+
+// ---- uninstall -----------------------------------------------------------------
+
+/** Windows' uninstaller for this copy of LUMA, next to LUMA.exe; null when running from source. */
+function uninstaller() {
+  if (!app.isPackaged || process.platform !== "win32") return null;
+  const exe = path.join(path.dirname(process.execPath), `Uninstall ${app.getName()}.exe`);
+  return fs.existsSync(exe) ? exe : null;
 }
 
 // ---- updates ------------------------------------------------------------------

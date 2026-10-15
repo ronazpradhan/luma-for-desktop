@@ -58,6 +58,8 @@ declare global {
       spotifyFromFile(): Promise<SpotifySignIn>;
       spotifyFromText(text: string): Promise<SpotifySignIn>;
       spotifySignOut(): Promise<boolean>;
+      canUninstall(): Promise<boolean>;
+      uninstall(): Promise<boolean>;
       updateState(): Promise<UpdateState | null>;
       checkForUpdates(): Promise<UpdateState | null>;
       installUpdate(): Promise<boolean>;

@@ -6,6 +6,7 @@ import { useAsync } from "./common";
 import { Art } from "../components/bits";
 import { SpotifySection } from "../components/SpotifySection";
 import { checkForUpdates, installUpdate, useUpdate } from "../update";
+import { confirmAsk } from "../components/Confirm";
 
 const BROWSER_NAMES: Record<string, string> = { firefox: "Firefox" };
 /** The open-source exporter yt-dlp recommends (Chrome Web Store; works in Edge and Brave too). */
@@ -130,6 +131,7 @@ export function Settings() {
         <h2>Where songs come from</h2>
         <p>LUMA looks for each song on JioSaavn and YouTube at once and plays whichever is ready first. Connecting YouTube above helps with songs that are hard to find. Downloads are saved to the LUMA folder in your Music folder and play without internet.</p>
       </section>
+      <AppSection />
       <section className="settings-group">
         <h2>About</h2>
         <dl className="about-list">
@@ -166,4 +168,33 @@ function UpdateStatus() {
     case "current": return <span className="update-line">Up to date <button className="btn btn-quiet btn-small" onClick={checkForUpdates}>Check again</button></span>;
     default: return <span className="update-line"><button className="btn btn-quiet btn-small" onClick={checkForUpdates}>Check for updates</button></span>;
   }
+}
+
+/** LUMA on this PC: where things are, and uninstalling (only in the installed app). */
+function AppSection() {
+  const bridge = window.luma;
+  const [installed, setInstalled] = useState(false);
+  useEffect(() => { bridge?.canUninstall?.().then(setInstalled).catch(() => {}); }, [bridge]);
+  if (!installed) return null;
+
+  async function uninstall() {
+    const ok = await confirmAsk({
+      title: "Uninstall LUMA?",
+      message: "LUMA will close and Windows' uninstaller will open. It asks whether to keep your library. Downloaded songs in Music\\LUMA are kept either way.",
+      action: "Uninstall",
+    });
+    if (ok) await bridge?.uninstall();
+  }
+
+  return (
+    <section className="settings-group">
+      <div className="account-row">
+        <span>
+          <h2>LUMA on this PC</h2>
+          <p>Downloads are in your Music folder under LUMA. You can also uninstall LUMA from Windows Settings › Apps.</p>
+        </span>
+        <button className="btn danger" onClick={uninstall}>Uninstall LUMA</button>
+      </div>
+    </section>
+  );
 }

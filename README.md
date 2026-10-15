@@ -22,10 +22,13 @@
 ## Install
 
 1. **[Download `LUMA-Setup.exe`](https://github.com/ronazpradhan/luma-for-desktop/releases/latest/download/LUMA-Setup.exe)** (always the newest version).
-2. Open it. LUMA installs and opens on its own, with no setup screens.
-3. If Windows shows **"Windows protected your PC"**, click **More info**, then **Run anyway**. That warning appears because the installer isn't code-signed, not because something is wrong with it.
+2. Open it. If Windows shows **"Windows protected your PC"**, click **More info**, then **Run anyway**. That warning appears because the installer isn't code-signed, not because something is wrong with it.
+3. Follow the setup:
+   - **Who it's for:** just you, or everyone who uses this PC.
+   - **Where to put it:** keep the suggested folder, or click **Browse** to choose another.
+   - **Install**, then leave **Run LUMA** ticked and click **Finish**.
 
-That's all. No account, no sign-up.
+LUMA gets a desktop shortcut and a Start menu entry. No account, no sign-up.
 
 **Needs:** Windows 10 or 11, 64-bit, and an internet connection (downloaded songs play offline).
 
@@ -72,7 +75,7 @@ LUMA has no accounts, no servers of its own and no tracking. It runs a small eng
 - **A song keeps skipping:** LUMA writes what happened to each song in a log. Press <kbd>Win</kbd> + <kbd>R</kbd>, paste `%APPDATA%\LUMA`, and open `luma.log`. The last lines usually say why. Include them if you [report a problem](https://github.com/ronazpradhan/luma-for-desktop/issues/new).
 - **"Windows protected your PC" when installing:** choose **More info → Run anyway** (see [Install](#install)).
 - **No update showing up:** open **Settings → About → Check for updates**. Versions from before 0.6.0 can't update themselves, so download the newest installer once from the link above. It installs over your old version and keeps your library.
-- **Uninstalling:** use *Settings → Apps* in Windows. Your library in `%APPDATA%\LUMA` and your downloads in `Music\LUMA` are kept, in case you come back.
+- **Uninstalling:** in LUMA, open **Settings → LUMA on this PC → Uninstall LUMA**. You can also use Windows' **Settings → Apps → Installed apps → LUMA → Uninstall**. The uninstaller asks whether to delete your library (liked songs, playlists, history). Downloaded songs in `Music\LUMA` are always kept.
 
 [Report a bug or suggest something →](https://github.com/ronazpradhan/luma-for-desktop/issues)
 

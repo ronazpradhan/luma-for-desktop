@@ -15,6 +15,8 @@ if (key) {
     spotifyFromFile: () => ipcRenderer.invoke("luma:spotify-from-file"),
     spotifyFromText: (text) => ipcRenderer.invoke("luma:spotify-from-text", text),
     spotifySignOut: () => ipcRenderer.invoke("luma:spotify-sign-out"),
+    canUninstall: () => ipcRenderer.invoke("luma:can-uninstall"),
+    uninstall: () => ipcRenderer.invoke("luma:uninstall"),
     updateState: () => ipcRenderer.invoke("luma:update-state"),
     checkForUpdates: () => ipcRenderer.invoke("luma:update-check"),
     installUpdate: () => ipcRenderer.invoke("luma:update-install"),

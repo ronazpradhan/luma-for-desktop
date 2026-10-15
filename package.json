@@ -1,7 +1,7 @@
 {
   "name": "luma-desktop",
   "productName": "LUMA",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "LUMA music player for Windows",
   "author": "Ronaz Pradhan",
   "license": "GPL-3.0-only",
@@ -68,11 +68,22 @@
       "artifactName": "LUMA-Setup.exe"
     },
     "nsis": {
-      "oneClick": true,
+      "oneClick": false,
       "perMachine": false,
-      "deleteAppDataOnUninstall": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "runAfterFinish": true,
       "shortcutName": "LUMA",
-      "uninstallDisplayName": "LUMA"
+      "uninstallDisplayName": "LUMA",
+      "deleteAppDataOnUninstall": false,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico",
+      "installerSidebar": "build/installerSidebar.bmp",
+      "uninstallerSidebar": "build/uninstallerSidebar.bmp",
+      "include": "build/installer.nsh"
     },
     "publish": [
       {
