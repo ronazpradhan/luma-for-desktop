@@ -31,6 +31,14 @@ jobs:
           v=$(node -p "require('./package.json').version")
           [ "v$v" = "${GITHUB_REF_NAME}" ] || { echo "Tag ${GITHUB_REF_NAME} but package.json says $v"; exit 1; }
 
+      # One release made up front: when electron-builder creates it itself, its
+      # parallel uploads can each make their own release for the same tag.
+      - name: Create the release
+        shell: bash
+        run: gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "LUMA for Windows ${GITHUB_REF_NAME#v}" --notes "Download **LUMA-Setup.exe** below and run it. Already have LUMA 0.6.0 or newer? It updates itself."
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Build and publish
         run: npm run release
         env:
