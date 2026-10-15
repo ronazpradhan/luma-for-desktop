@@ -77,7 +77,9 @@ export async function openStore(dir) {
     },
 
     /** An imported playlist ([source] like "spotify:<id>"), replaced in place on each import. */
+    /** Creates or refreshes the playlist imported from [source]; null when the listener deleted it. */
     upsertImported(source, name, tracks, art = null) {
+      if (data.removedImports?.includes(source)) return null;
       let p = data.playlists.find((x) => x.source === source);
       if (p) {
         p.name = name.slice(0, 120) || p.name;
@@ -107,7 +109,10 @@ export async function openStore(dir) {
     },
 
     deletePlaylist(id) {
+      const gone = data.playlists.find((p) => p.id === id);
       data.playlists = data.playlists.filter((p) => p.id !== id);
+      // A deleted import stays deleted: importing again doesn't bring it back.
+      if (gone?.source) data.removedImports = [...new Set([...(data.removedImports ?? []), gone.source])];
       save();
     },
 

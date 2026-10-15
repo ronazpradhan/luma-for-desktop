@@ -39,6 +39,10 @@ test("an imported playlist is replaced in place, not duplicated", async () => {
     assert.equal(a.id, b.id);
     assert.equal(store.snapshot().playlists.length, 1);
     assert.equal(store.snapshot().playlists[0].tracks.length, 0);
+    // Deleted by the listener: the next import leaves it deleted.
+    store.deletePlaylist(a.id);
+    assert.equal(store.upsertImported("spotify:liked", "Liked Songs (Spotify)", [{ id: "V-uIp-WuD60", title: "Patient Zero" }]), null);
+    assert.equal(store.snapshot().playlists.length, 0);
     await store.flush();
   } finally {
     await rm(dir, { recursive: true, force: true });

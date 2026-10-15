@@ -22,7 +22,7 @@ export type Album = { id: string; title: string; subtitle: string; artist: strin
 export type YtPlaylist = { id: string; title: string; subtitle: string; art: string | null; tracks: Track[] };
 export type Artist = { id: string; name: string; art: string | null; about: string; songs: Track[]; shelves: Shelf[] };
 export type SearchResults = { songs: Track[]; albums: Tile[]; artists: Tile[] };
-export type Playlist = { id: string; name: string; tracks: Track[]; createdAt: number; art: string | null };
+export type Playlist = { id: string; name: string; tracks: Track[]; createdAt: number; art: string | null; source?: string };
 export type Library = {
   likes: Track[];
   playlists: Playlist[];

@@ -7,6 +7,8 @@ import { Sidebar } from "./components/Sidebar";
 import { Toast } from "./components/Toast";
 import { TopBar } from "./components/TopBar";
 import { TrackMenu } from "./components/TrackMenu";
+import { PlaylistMenu } from "./components/PlaylistMenu";
+import { ConfirmDialog } from "./components/Confirm";
 import { useLibrary } from "./library";
 import { useNav } from "./nav";
 import { usePlayer } from "./player";
@@ -89,6 +91,8 @@ export function App() {
       <PlayerBar />
       {npOpen && <NowPlaying />}
       <TrackMenu />
+      <PlaylistMenu />
+      <ConfirmDialog />
       <Toast />
     </div>
   );

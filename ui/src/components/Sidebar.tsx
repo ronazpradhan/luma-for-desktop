@@ -2,6 +2,7 @@ import { Download, Heart, Home, Library, Plus, Search, Settings } from "lucide-r
 import { useLibrary } from "../library";
 import { useNav, type Route } from "../nav";
 import { Art } from "./bits";
+import { deletePlaylistAsk, usePlaylistMenu } from "./PlaylistMenu";
 
 export function Sidebar() {
   const route = useNav((s) => s.route);
@@ -52,7 +53,10 @@ export function Sidebar() {
             </button>
           ))}
           {playlists.map((p) => (
-            <button key={p.id} className={`side-row ${route.name === "playlist" && route.id === p.id ? "is-active" : ""}`} onClick={() => go({ name: "playlist", id: p.id })} title={p.name}>
+            <button key={p.id} className={`side-row ${route.name === "playlist" && route.id === p.id ? "is-active" : ""}`} onClick={() => go({ name: "playlist", id: p.id })} title={p.name}
+              aria-current={route.name === "playlist" && route.id === p.id ? "page" : undefined}
+              onContextMenu={(e) => { e.preventDefault(); usePlaylistMenu.getState().open(p.id, e.clientX, e.clientY); }}
+              onKeyDown={(e) => { if (e.key === "Delete") { e.preventDefault(); deletePlaylistAsk(p); } }}>
               <Art src={p.art} size={36} />
               <span className="side-text"><b>{p.name}</b><small>{p.tracks.length} {p.tracks.length === 1 ? "song" : "songs"}</small></span>
             </button>

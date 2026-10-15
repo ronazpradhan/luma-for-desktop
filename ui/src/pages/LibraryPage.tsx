@@ -4,6 +4,7 @@ import { Shelf } from "../components/Shelf";
 import { TrackList } from "../components/TrackList";
 import { useLibrary } from "../library";
 import { useNav } from "../nav";
+import { deletePlaylistAsk, usePlaylistMenu } from "../components/PlaylistMenu";
 
 export function LibraryPage() {
   const lib = useLibrary();
@@ -27,7 +28,9 @@ export function LibraryPage() {
             <div className="tile-sub">{downloads} {downloads === 1 ? "song" : "songs"}</div>
           </button>
           {lib.playlists.map((p) => (
-            <button key={p.id} className="tile" onClick={() => go({ name: "playlist", id: p.id })}>
+            <button key={p.id} className="tile" onClick={() => go({ name: "playlist", id: p.id })}
+              onContextMenu={(e) => { e.preventDefault(); usePlaylistMenu.getState().open(p.id, e.clientX, e.clientY); }}
+              onKeyDown={(e) => { if (e.key === "Delete") { e.preventDefault(); deletePlaylistAsk(p); } }}>
               <div className="tile-art"><Art src={p.art} /></div>
               <div className="tile-title">{p.name}</div>
               <div className="tile-sub">{p.tracks.length} {p.tracks.length === 1 ? "song" : "songs"}</div>

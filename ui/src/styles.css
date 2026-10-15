@@ -23,8 +23,14 @@
   --line-strong: rgb(255 255 255 / 0.14);
   --hover: rgb(255 255 255 / 0.055);
   --press: rgb(255 255 255 / 0.09);
-  --glass: rgb(28 25 38 / 0.52);
-  --glass-strong: rgb(24 21 33 / 0.78);
+  /* Liquid Glass, regular variant: blur, a mild saturation lift, a translucent
+     fill with no colour of its own, and a hairline highlight on the top edge.
+     It takes its colour from whatever scrolls beneath it. */
+  --glass: rgb(24 22 33 / 0.62);
+  --glass-strong: rgb(22 20 30 / 0.82);
+  --glass-blur: blur(28px) saturate(140%);
+  --glass-edge: inset 0 1px 0 rgb(255 255 255 / 0.08), inset 0 0 0 1px rgb(255 255 255 / 0.06);
+  --bar-h: 84px;
   --glow: rgb(120 104 210);
   --accent: rgb(201 190 255);
   --radius-panel: 18px;
@@ -74,8 +80,9 @@ h1, h2, h3, p { margin: 0; }
 
 .glass {
   background: var(--glass);
-  backdrop-filter: blur(30px) saturate(150%);
-  border: 1px solid var(--line);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-edge);
 }
 
 /* ---- frame ------------------------------------------------------------ */
@@ -90,9 +97,13 @@ h1, h2, h3, p { margin: 0; }
   padding: 8px;
 }
 .app.with-queue { grid-template-columns: 268px minmax(0, 1fr) 340px; }
+/* Content runs to the bottom of the window; the player bar floats over it. */
+.app > .center { grid-row: 1 / 3; grid-column: 2; }
 
 .sidebar {
   grid-row: 1;
+  /* A large, text-heavy surface: the more opaque end of regular glass. */
+  background: rgb(22 20 30 / 0.72);
   border-radius: var(--radius-panel);
   display: flex;
   flex-direction: column;
@@ -120,7 +131,7 @@ h1, h2, h3, p { margin: 0; }
 .side-text small { color: var(--haze); font-size: 12px; }
 
 .center {
-  grid-row: 1;
+  position: relative;
   min-width: 0;
   min-height: 0;
   display: flex;
@@ -130,18 +141,21 @@ h1, h2, h3, p { margin: 0; }
   border: 1px solid var(--line);
   overflow: hidden;
 }
+/* The top bar floats over the page; content scrolls beneath it. */
 .topbar {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 3;
   display: flex;
   align-items: center;
   gap: 12px;
   height: 60px;
-  flex: none;
   padding: 0 calc(16px + var(--titlebar-right)) 0 16px;
   -webkit-app-region: drag;
 }
 .topbar > *:not(.drag-space) { -webkit-app-region: no-drag; }
 .drag-space { flex: 1; align-self: stretch; }
-.main { flex: 1; overflow-y: auto; overflow-x: hidden; animation: page-in 0.28s var(--ease); }
+.main { flex: 1; overflow-y: auto; overflow-x: hidden; padding-bottom: calc(var(--bar-h) + 16px); scroll-padding-top: 68px; animation: page-in 0.28s var(--ease); }
 @keyframes page-in { from { opacity: 0; transform: translateY(6px); } }
 
 /* ---- controls --------------------------------------------------------- */
@@ -150,8 +164,8 @@ h1, h2, h3, p { margin: 0; }
 .icon-btn:hover:not(:disabled) { color: var(--moon); background: var(--hover); }
 .icon-btn:active:not(:disabled) { transform: scale(0.9); }
 .icon-btn.is-on { color: var(--accent); }
-.icon-btn.round { width: 38px; height: 38px; background: rgb(0 0 0 / 0.22); color: var(--moon); }
-.icon-btn.round:hover:not(:disabled) { background: rgb(0 0 0 / 0.38); }
+.icon-btn.round { width: 38px; height: 38px; background: rgb(255 255 255 / 0.08); color: var(--moon); -webkit-backdrop-filter: blur(12px) saturate(140%); backdrop-filter: blur(12px) saturate(140%); box-shadow: var(--glass-edge); }
+.icon-btn.round:hover:not(:disabled) { background: rgb(255 255 255 / 0.16); }
 
 .btn { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 18px; border-radius: 999px; font-weight: 600; background: rgb(255 255 255 / 0.08); border: 1px solid var(--line); transition: background 0.15s, transform 0.12s, border-color 0.15s; white-space: nowrap; }
 .btn:hover:not(:disabled) { background: rgb(255 255 255 / 0.13); border-color: var(--line-strong); }
@@ -160,7 +174,12 @@ h1, h2, h3, p { margin: 0; }
 .btn-primary:hover:not(:disabled) { background: #fff; }
 .btn-quiet { background: transparent; border-color: transparent; color: var(--haze); padding: 0 12px; }
 .btn-quiet:hover:not(:disabled) { color: var(--moon); }
-.btn.danger:hover:not(:disabled) { color: #ffb4a8; }
+.btn.danger { color: #ffb0a6; }
+.btn.danger:hover:not(:disabled) { background: rgb(255 120 105 / 0.14); border-color: rgb(255 120 105 / 0.35); }
+/* White on #c4373d is 5.3:1. */
+.btn-destructive { background: #c4373d; color: #fff; border-color: transparent; }
+.btn-destructive:hover:not(:disabled) { background: #d23f45; }
+.menu-item.menu-destructive, .menu-item.menu-destructive svg { color: #ffb0a6; }
 .link { color: inherit; text-align: left; }
 .link:hover { text-decoration: underline; color: var(--moon); }
 .link.strong { font-weight: 700; color: var(--moon); }
@@ -211,7 +230,7 @@ h1, h2, h3, p { margin: 0; }
 
 /* ---- pages ------------------------------------------------------------ */
 
-.page { padding: 8px 32px 48px; max-width: 1500px; }
+.page { padding: 68px 32px 48px; max-width: 1500px; }
 .page.is-stale, .is-stale { opacity: 0.55; transition: opacity 0.2s; }
 .page-narrow { max-width: 760px; }
 .page-hero { padding: 18px 0 26px; }
@@ -308,6 +327,7 @@ h1, h2, h3, p { margin: 0; }
 .artist-shade { position: absolute; inset: 0; background: linear-gradient(to bottom, rgb(14 13 19 / 0.05), rgb(14 13 19 / 0.85)); }
 .artist-head h1 { position: relative; font-size: clamp(40px, 6vw, 84px); font-weight: 800; letter-spacing: -0.035em; line-height: 1; text-shadow: 0 4px 30px rgb(0 0 0 / 0.5); }
 .page-artist { padding-top: 0; }
+.page-artist .artist-head { height: 360px; }
 .about p { color: var(--haze); max-width: 72ch; line-height: 1.65; white-space: pre-line; }
 
 .empty { display: grid; justify-items: center; gap: 10px; padding: 56px 20px; text-align: center; color: var(--haze); }
@@ -344,15 +364,15 @@ kbd { display: inline-block; min-width: 26px; padding: 2px 7px; border-radius: 6
 .playerbar {
   grid-column: 1 / -1;
   grid-row: 2;
-  height: 84px;
+  height: var(--bar-h);
+  z-index: 5;
   border-radius: var(--radius-panel);
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(360px, 1.3fr) minmax(0, 1fr);
   align-items: center;
   gap: 16px;
   padding: 0 16px 0 12px;
-  background: color-mix(in srgb, var(--glow) 14%, rgb(20 18 28 / 0.72));
-  transition: background 1.4s var(--ease);
+  box-shadow: var(--glass-edge), 0 14px 40px rgb(0 0 0 / 0.38);
 }
 .pb-track { display: flex; align-items: center; gap: 14px; min-width: 0; }
 .pb-art { position: relative; border-radius: 8px; overflow: hidden; flex: none; }
@@ -493,7 +513,7 @@ kbd { display: inline-block; min-width: 26px; padding: 2px 7px; border-radius: 6
 
 /* ---- menus & notes ---------------------------------------------------- */
 
-.menu { position: fixed; z-index: 60; min-width: 230px; max-height: 70vh; overflow-y: auto; padding: 6px; border-radius: 14px; background: var(--glass-strong); box-shadow: 0 20px 60px rgb(0 0 0 / 0.5); animation: menu-in 0.14s var(--ease); }
+.menu { position: fixed; z-index: 60; box-shadow: var(--glass-edge), 0 20px 60px rgb(0 0 0 / 0.5); min-width: 230px; max-height: 70vh; overflow-y: auto; padding: 6px; border-radius: 14px; background: var(--glass-strong); box-shadow: 0 20px 60px rgb(0 0 0 / 0.5); animation: menu-in 0.14s var(--ease); }
 @keyframes menu-in { from { opacity: 0; transform: scale(0.97); } }
 .menu hr { border: 0; border-top: 1px solid var(--line); margin: 5px 4px; }
 .menu-item { display: flex; align-items: center; gap: 12px; width: 100%; padding: 9px 12px; border-radius: 9px; text-align: left; font-weight: 500; }
@@ -501,6 +521,11 @@ kbd { display: inline-block; min-width: 26px; padding: 2px 7px; border-radius: 6
 .menu-item svg { color: var(--haze); flex: none; }
 .menu-gap { width: 16px; flex: none; }
 
+.dialog-scrim { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 24px; background: rgb(6 5 10 / 0.5); animation: fade-in 0.15s; }
+.dialog { width: min(420px, 100%); display: grid; gap: 10px; padding: 24px; border-radius: 20px; background: var(--glass-strong); box-shadow: var(--glass-edge), 0 30px 80px rgb(0 0 0 / 0.55); animation: menu-in 0.18s var(--ease); }
+.dialog h2 { font-size: 18px; font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
+.dialog p { color: var(--haze); line-height: 1.55; }
+.dialog-actions { display: flex; justify-content: end; gap: 10px; margin-top: 10px; }
 .toast-wrap { position: fixed; left: 50%; bottom: 112px; transform: translateX(-50%); z-index: 70; pointer-events: none; }
 .toast { width: max-content; max-width: min(520px, calc(100vw - 48px)); padding: 11px 18px; border-radius: 16px; background: color-mix(in srgb, var(--night-2) 96%, var(--glow)); border: 1px solid var(--line-strong); font-weight: 600; line-height: 1.4; text-align: center; box-shadow: 0 12px 40px rgb(0 0 0 / 0.45); animation: toast-in 0.25s var(--ease); }
 @keyframes toast-in { from { opacity: 0; transform: translateY(10px); } }
@@ -524,7 +549,7 @@ kbd { display: inline-block; min-width: 26px; padding: 2px 7px; border-radius: 6
   .np-body { grid-template-columns: 1fr; padding: 0 28px 24px; }
   .np-body .lyrics { display: none; }
   .np-left { justify-self: center; }
-  .page { padding: 8px 20px 40px; }
+  .page { padding: 68px 20px 40px; }
   .artist-head { margin: 0 -20px 24px; padding: 0 20px 24px; }
 }
 
@@ -551,8 +576,35 @@ kbd { display: inline-block; min-width: 26px; padding: 2px 7px; border-radius: 6
 .seek { position: relative; }
 .seek-tip { position: absolute; bottom: 20px; transform: translateX(-50%); padding: 3px 8px; border-radius: 7px; background: var(--glass-strong); border: 1px solid var(--line); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; pointer-events: none; white-space: nowrap; box-shadow: 0 6px 20px rgb(0 0 0 / 0.4); }
 
-.topbar { transition: box-shadow 0.25s, background 0.25s; position: relative; z-index: 2; }
-.center.is-scrolled .topbar { box-shadow: 0 10px 30px -12px rgb(0 0 0 / 0.6); background: rgb(14 13 19 / 0.35); }
+/* Scroll edge effect: where content meets a bar it blurs and fades into the
+   glass instead of colliding with it. At rest (top of the page) there's none. */
+.topbar::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 -28px;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgb(18 16 26 / 0.55), rgb(18 16 26 / 0.3) 60px, transparent);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  -webkit-mask-image: linear-gradient(to bottom, #000 60px, transparent);
+  mask-image: linear-gradient(to bottom, #000 60px, transparent);
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+.center.is-scrolled .topbar::before { opacity: 1; }
+.center::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 var(--bar-h);
+  height: 32px;
+  z-index: 2;
+  pointer-events: none;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  -webkit-mask-image: linear-gradient(to top, #000, transparent);
+  mask-image: linear-gradient(to top, #000, transparent);
+}
 
 .top-result { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 28px; margin-bottom: 40px; }
 .top-card { position: relative; display: grid; gap: 14px; padding: 22px; border-radius: var(--radius-panel); background: rgb(255 255 255 / 0.06); border: 1px solid var(--line); text-align: left; transition: background 0.2s; min-width: 0; }
@@ -569,15 +621,17 @@ kbd { display: inline-block; min-width: 26px; padding: 2px 7px; border-radius: 6
 
 /* Transparency off: glass becomes solid, the light stays. */
 @media (prefers-reduced-transparency: reduce) {
-  .glass, .suggest, .menu, .toast { backdrop-filter: none; background: var(--night-2); }
-  .playerbar { background: color-mix(in srgb, var(--glow) 10%, var(--night-2)); }
+  .glass, .suggest, .menu, .toast, .dialog, .sidebar, .icon-btn.round { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--night-2); }
+  .topbar::before { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--night); -webkit-mask-image: none; mask-image: none; inset: 0; }
+  .center::after { display: none; }
   .center { background: var(--night); }
 }
 
 /* More contrast: brighter secondary text, firmer edges. */
 @media (prefers-contrast: more) {
   :root { --haze: #cfc9da; --line: rgb(255 255 255 / 0.22); --line-strong: rgb(255 255 255 / 0.34); --hover: rgb(255 255 255 / 0.1); }
-  .glass, .settings-group, .center { border-color: var(--line-strong); }
+  .glass, .settings-group, .center, .dialog { border: 1px solid var(--line-strong); }
+  .topbar::before { background: var(--night-2); }
 }
 
 /* Windows high contrast themes: the system's colours, every control outlined. */

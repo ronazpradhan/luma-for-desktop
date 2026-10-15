@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Download, Pencil, Play, Shuffle, Trash2 } from "lucide-react";
 import { api, type Track } from "../api";
 import { Art, Empty, Failed, SkeletonRows } from "../components/bits";
@@ -7,6 +7,7 @@ import { useLibrary } from "../library";
 import { useNav } from "../nav";
 import { usePlayer } from "../player";
 import { useAsync } from "./common";
+import { deletePlaylistAsk, useRenaming } from "../components/PlaylistMenu";
 
 type Header = { kind: string; title: string; subtitle?: string; art?: string | null; artistId?: string | null; artist?: string };
 
@@ -90,9 +91,12 @@ export function YtPlaylistPage({ id }: { id: string }) {
 
 export function PlaylistPage({ id }: { id: string }) {
   const lib = useLibrary();
-  const back = useNav((s) => s.back);
-  const [editing, setEditing] = useState(false);
+  const renaming = useRenaming((s) => s.id === id);
+  const [editing, setEditing] = useState(renaming);
   const p = lib.playlists.find((x) => x.id === id);
+  useEffect(() => {
+    if (renaming) { setEditing(true); useRenaming.setState({ id: null }); }
+  }, [renaming]);
   if (!p) return <div className="page"><Empty title="This playlist is gone">It was deleted.</Empty></div>;
   return (
     <CollectionView
@@ -108,9 +112,9 @@ export function PlaylistPage({ id }: { id: string }) {
               <input name="name" defaultValue={p.name} autoFocus maxLength={120} aria-label="Playlist name" onBlur={(e) => { lib.renamePlaylist(p.id, e.target.value); setEditing(false); }} />
             </form>
           ) : (
-            <button className="btn btn-quiet" onClick={() => setEditing(true)}><Pencil size={16} /> Rename</button>
+            <button className="btn" onClick={() => setEditing(true)}><Pencil size={16} /> Rename</button>
           )}
-          <button className="btn btn-quiet danger" onClick={() => { if (confirm(`Delete "${p.name}"? Its songs stay in your library.`)) { lib.deletePlaylist(p.id); back(); } }}><Trash2 size={16} /> Delete</button>
+          <button className="btn danger" onClick={() => deletePlaylistAsk(p)}><Trash2 size={16} /> Delete playlist</button>
         </>
       }
     />
