@@ -71,7 +71,7 @@ export function NowPlaying() {
           <Seek className="np-seek" />
           <Transport big />
           {next && (
-            <button className="np-next glass" onClick={() => usePlayer.getState().next()}>
+            <button className="np-next" onClick={() => usePlayer.getState().next()}>
               <Art src={next.art} size={40} />
               <span><small>Up next</small><b>{next.title}</b><small>{next.artist}</small></span>
             </button>

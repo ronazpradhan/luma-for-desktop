@@ -33,7 +33,7 @@ export function ConfirmDialog() {
   if (!ask) return null;
   return (
     <div className="dialog-scrim" onMouseDown={(e) => e.target === e.currentTarget && done(false)}>
-      <div className="dialog glass" role="alertdialog" aria-modal="true" aria-labelledby="dialog-title" aria-describedby="dialog-message">
+      <div className="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dialog-title" aria-describedby="dialog-message">
         <h2 id="dialog-title">{ask.title}</h2>
         <p id="dialog-message">{ask.message}</p>
         <div className="dialog-actions">
