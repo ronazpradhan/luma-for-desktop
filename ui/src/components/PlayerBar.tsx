@@ -1,5 +1,5 @@
 import { Heart, Maximize2, Pause, Play, Repeat, Repeat1, Shuffle, SkipBack, SkipForward, Volume1, Volume2, VolumeX } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { formatTime } from "../api";
 import { useLibrary } from "../library";
 import { useNav } from "../nav";
@@ -89,10 +89,35 @@ export function PlayerBar() {
     return { x: e.clientX - r.left, f: Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)) };
   };
 
+  // Scrolling over the pill turns the volume up or down, and shows the level for a moment.
+  const pill = useRef<HTMLElement>(null);
+  const [volumeShown, setVolumeShown] = useState(false);
+  const hideVolume = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    const el = pill.current;
+    if (!el) return;
+    // Not React's onWheel: that listener is passive, so the page would scroll too.
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const s = usePlayer.getState();
+      const step = (e.deltaY < 0 ? 1 : -1) * 0.05;
+      s.setVolume(Math.round(((s.muted ? 0 : s.volume) + step) * 20) / 20);
+      setVolumeShown(true);
+      clearTimeout(hideVolume.current);
+      hideVolume.current = window.setTimeout(() => setVolumeShown(false), 900);
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => { el.removeEventListener("wheel", onWheel); clearTimeout(hideVolume.current); };
+  }, []);
+  const level = p.muted ? 0 : p.volume;
+  const VolIcon = level === 0 ? VolumeX : level < 0.5 ? Volume1 : Volume2;
+
   // Always the small pill: the song, like, download and play controls. The
   // rest (seek, queue, lyrics, volume) is one click away in Now Playing.
   return (
     <footer
+      ref={pill}
+      title="Scroll to change the volume"
       className={`playerbar ${p.playing ? "" : "is-paused"} ${scrub != null ? "is-scrubbing" : ""} ${hoverAt ? "is-seekable" : ""}`}
       aria-label="Player"
       onPointerDown={(e) => {
@@ -112,7 +137,14 @@ export function PlayerBar() {
       onPointerCancel={() => setScrub(null)}
       onPointerLeave={() => scrub == null && setHoverAt(null)}
     >
-      {hoverAt && <span className="pb-seek-tip" style={{ left: hoverAt.x }}>{formatTime(hoverAt.f * p.duration)}</span>}
+      {volumeShown && (
+        <span className="pb-volume" role="status" aria-label={`Volume ${Math.round(level * 100)}%`}>
+          <VolIcon size={15} />
+          <span className="pb-volume-bar"><span style={{ width: `${level * 100}%` }} /></span>
+          <b>{Math.round(level * 100)}</b>
+        </span>
+      )}
+      {hoverAt && !volumeShown && <span className="pb-seek-tip" style={{ left: hoverAt.x }}>{formatTime(hoverAt.f * p.duration)}</span>}
       {/* The pill fills with the song's colour as it plays, like liquid. */}
       <span className={`pb-fluid ${progress > 0.002 ? "" : "is-empty"}`} style={{ ["--p" as string]: progress }} aria-hidden>
         <span className="pb-wave" />

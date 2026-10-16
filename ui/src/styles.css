@@ -454,6 +454,11 @@ kbd { display: inline-block; min-width: 26px; padding: 2px 7px; border-radius: 6
 .playerbar.is-scrubbing { user-select: none; }
 .playerbar.is-scrubbing .pb-fluid { transition: none; }
 .pb-seek-tip { position: absolute; top: 4px; transform: translateX(-50%); padding: 1px 7px; border-radius: 6px; background: rgb(10 9 15 / 0.75); font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; pointer-events: none; z-index: 2; }
+/* Volume, shown over the pill while you scroll on it. */
+.pb-volume { position: absolute; inset: 0; z-index: 3; display: flex; align-items: center; justify-content: center; gap: 12px; background: rgb(12 10 18 / 0.82); border-radius: inherit; font-variant-numeric: tabular-nums; animation: fade-in 0.12s; pointer-events: none; }
+.pb-volume-bar { width: 46%; height: 6px; border-radius: 6px; background: rgb(255 255 255 / 0.14); overflow: hidden; }
+.pb-volume-bar > span { display: block; height: 100%; background: var(--accent); border-radius: inherit; transition: width 0.12s; }
+.pb-volume b { width: 28px; font-size: 13px; text-align: right; }
 .pb-sep { width: 1px; height: 22px; margin: 0 6px; background: rgb(255 255 255 / 0.12); }
 .volume-control { display: flex; align-items: center; gap: 4px; }
 
