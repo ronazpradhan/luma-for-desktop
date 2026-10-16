@@ -92,6 +92,7 @@ export function PlayerBar() {
   // Scrolling over the pill turns the volume up or down, and shows the level for a moment.
   const pill = useRef<HTMLElement>(null);
   const [volumeShown, setVolumeShown] = useState(false);
+  const [volumeUsed, setVolumeUsed] = useState(false);
   const hideVolume = useRef<number | undefined>(undefined);
   useEffect(() => {
     const el = pill.current;
@@ -102,9 +103,10 @@ export function PlayerBar() {
       const s = usePlayer.getState();
       const step = (e.deltaY < 0 ? 1 : -1) * 0.05;
       s.setVolume(Math.round(((s.muted ? 0 : s.volume) + step) * 20) / 20);
+      setVolumeUsed(true);
       setVolumeShown(true);
       clearTimeout(hideVolume.current);
-      hideVolume.current = window.setTimeout(() => setVolumeShown(false), 900);
+      hideVolume.current = window.setTimeout(() => setVolumeShown(false), 450);
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => { el.removeEventListener("wheel", onWheel); clearTimeout(hideVolume.current); };
@@ -137,8 +139,8 @@ export function PlayerBar() {
       onPointerCancel={() => setScrub(null)}
       onPointerLeave={() => scrub == null && setHoverAt(null)}
     >
-      {volumeShown && (
-        <span className="pb-volume" role="status" aria-label={`Volume ${Math.round(level * 100)}%`}>
+      {volumeUsed && (
+        <span className={`pb-volume ${volumeShown ? "is-shown" : ""}`} role="status" aria-label={`Volume ${Math.round(level * 100)}%`}>
           <VolIcon size={15} />
           <span className="pb-volume-bar"><span style={{ width: `${level * 100}%` }} /></span>
           <b>{Math.round(level * 100)}</b>

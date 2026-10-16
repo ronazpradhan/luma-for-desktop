@@ -23,6 +23,8 @@ type LibraryState = Library & {
   deletePlaylist(id: string): void;
   download(tracks: Track[]): Promise<void>;
   removeDownload(id: string): void;
+  /** Every download, with Undo for 5 s. */
+  clearDownloads(): void;
   setAutoplay(on: boolean): Promise<void>;
 };
 
@@ -182,6 +184,18 @@ export const useLibrary = create<LibraryState>((set, get) => {
       for (const t of todo) await api.download(t).catch(() => {});
       toast(todo.length === 1 ? `Downloading "${todo[0].title}"` : `Downloading ${todo.length} songs`);
       pollDownloads();
+    },
+
+    clearDownloads() {
+      const ids = Object.keys(get().downloads);
+      if (!ids.length) return;
+      later("undownload:all", `Cleared ${ids.length} ${ids.length === 1 ? "download" : "downloads"}`,
+        (lib) => ({ ...lib, downloads: {} }),
+        async () => {
+          let lib: Library | undefined;
+          for (const id of ids) lib = await api.removeDownload(id).catch(() => lib);
+          return lib;
+        });
     },
 
     removeDownload(id) {

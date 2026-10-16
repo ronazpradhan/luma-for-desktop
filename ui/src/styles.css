@@ -129,7 +129,6 @@ h1, h2, h3, p { margin: 0; }
   padding: 0 8px 8px;
 }
 .app.with-queue { grid-template-columns: 268px minmax(0, 1fr) 340px; }
-.app.with-queue .playerbar { --pb-right: calc(340px + 16px); }
 .app > .center { grid-row: 2 / 4; grid-column: 2; }
 
 .sidebar {
@@ -148,6 +147,11 @@ h1, h2, h3, p { margin: 0; }
 .nav-item:hover { background: var(--hover); color: var(--moon); }
 .nav-item.is-active { background: var(--press); color: var(--moon); }
 .nav-item.is-active svg { color: var(--accent); }
+/* Undo sits just above Settings: in the sidebar's flow (the playlist list gives
+   up the room, so nothing is covered), with a bar running out with its time. */
+.side-undo { position: relative; overflow: hidden; display: flex; align-items: center; gap: 8px; min-height: 40px; margin: 0 0 4px; padding: 4px 4px 4px 12px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 14%, transparent); animation: fade-in 0.15s; }
+.side-undo span:first-child { flex: 1; min-width: 0; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.side-undo .toast-action { padding: 5px 12px; font-size: 13px; }
 .nav-item.update-ready { color: var(--night); background: var(--accent); margin-bottom: 4px; }
 .nav-item.update-ready:hover { color: var(--night); background: color-mix(in srgb, var(--accent) 85%, white); }
 .update-line { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -409,8 +413,9 @@ kbd { display: inline-block; min-width: 26px; padding: 2px 7px; border-radius: 6
    Positioned on its own (not a grid cell): Chromium only blurs what's behind
    a backdrop-filter when the element isn't laid out in the grid over it. */
 .playerbar {
-  --pb-left: calc(268px + 16px);
-  --pb-right: 8px;
+  /* Centred on the window, not on the page beside the sidebar. */
+  --pb-left: 0px;
+  --pb-right: 0px;
   position: fixed;
   left: var(--pb-left);
   right: var(--pb-right);
@@ -455,7 +460,8 @@ kbd { display: inline-block; min-width: 26px; padding: 2px 7px; border-radius: 6
 .playerbar.is-scrubbing .pb-fluid { transition: none; }
 .pb-seek-tip { position: absolute; top: 4px; transform: translateX(-50%); padding: 1px 7px; border-radius: 6px; background: rgb(10 9 15 / 0.75); font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; pointer-events: none; z-index: 2; }
 /* Volume, shown over the pill while you scroll on it. */
-.pb-volume { position: absolute; inset: 0; z-index: 3; display: flex; align-items: center; justify-content: center; gap: 12px; background: rgb(12 10 18 / 0.82); border-radius: inherit; font-variant-numeric: tabular-nums; animation: fade-in 0.12s; pointer-events: none; }
+.pb-volume { position: absolute; inset: 0; z-index: 3; display: flex; align-items: center; justify-content: center; gap: 12px; background: rgb(12 10 18 / 0.82); border-radius: inherit; font-variant-numeric: tabular-nums; pointer-events: none; opacity: 0; transition: opacity 0.18s ease-out; }
+.pb-volume.is-shown { opacity: 1; transition-duration: 0.08s; }
 .pb-volume-bar { width: 46%; height: 6px; border-radius: 6px; background: rgb(255 255 255 / 0.14); overflow: hidden; }
 .pb-volume-bar > span { display: block; height: 100%; background: var(--accent); border-radius: inherit; transition: width 0.12s; }
 .pb-volume b { width: 28px; font-size: 13px; text-align: right; }
@@ -675,14 +681,14 @@ kbd { display: inline-block; min-width: 26px; padding: 2px 7px; border-radius: 6
   .app, .app.with-queue { grid-template-columns: 76px minmax(0, 1fr); }
   .app.with-queue .queue { position: fixed; right: 8px; top: 52px; bottom: 112px; width: min(340px, 90vw); z-index: 30; }
   .sidebar { padding: 14px 8px; }
-  .brand span, .nav-item span, .side-head span, .side-text { display: none; }
+  .brand span, .nav-item span, .side-head span, .side-text, .side-undo span:first-child { display: none; }
+  .side-undo { padding: 4px; justify-content: center; }
   .brand { justify-content: center; padding: 2px 0 18px; }
   .nav-item { justify-content: center; padding: 0; }
   .side-head { justify-content: center; padding: 0 0 8px; }
   .side-row { justify-content: center; padding: 6px 0; }
   .row { grid-template-columns: 32px 40px minmax(0, 1fr) auto; }
   .row-album { display: none; }
-  .playerbar, .app.with-queue .playerbar { --pb-left: calc(76px + 16px); --pb-right: 8px; }
   .np-body { grid-template-columns: 1fr; padding: 0 28px 24px; }
   .np-body .lyrics { display: none; }
   .np-left { justify-self: center; }

@@ -25,7 +25,7 @@ import { isSignedInJar, openYouTubeAuth, parseNetscape, sessionHeaders } from ".
 
 const VIDEO_ID = /^[A-Za-z0-9_-]{11}$/;
 const BROWSE_ID = /^[A-Za-z0-9_-]{2,80}$/;
-const IMAGE_HOSTS = [/^yt3\.googleusercontent\.com$/, /^lh\d\.googleusercontent\.com$/, /^yt\d\.ggpht\.com$/, /^i\d?\.ytimg\.com$/, /^c\.saavncdn\.com$/];
+const IMAGE_HOSTS = [/^yt3\.googleusercontent\.com$/, /^lh\d\.googleusercontent\.com$/, /^yt\d\.ggpht\.com$/, /^i\d?\.ytimg\.com$/, /^c\.saavncdn\.com$/, /^(i|mosaic|image-cdn-[a-z]+)\.scdn\.co$/];
 const MAX_BODY = 1_000_000;
 const MIME = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".ico": "image/x-icon", ".woff2": "font/woff2", ".json": "application/json" };
 
@@ -372,10 +372,15 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
     if (url.protocol !== "https:" || !IMAGE_HOSTS.some((h) => h.test(url.hostname))) throw new HttpError(403, "image host not allowed");
     let hit = images.get(url.href);
     if (!hit) {
-      const up = await fetch(url, { signal: AbortSignal.timeout(10_000), redirect: "error" });
-      const type = up.headers.get("content-type") ?? "";
-      if (!up.ok || !type.startsWith("image/")) throw new HttpError(502, "image unavailable");
-      hit = { type, body: Buffer.from(await up.arrayBuffer()) };
+      // The sharpest version the host has; the original when that doesn't exist.
+      for (const candidate of [...new Set([sharperArt(url.href), url.href])]) {
+        const up = await fetch(candidate, { signal: AbortSignal.timeout(10_000), redirect: "error" }).catch(() => null);
+        const type = up?.headers.get("content-type") ?? "";
+        if (!up?.ok || !type.startsWith("image/")) { await up?.body?.cancel().catch(() => {}); continue; }
+        hit = { type, body: Buffer.from(await up.arrayBuffer()) };
+        break;
+      }
+      if (!hit) throw new HttpError(502, "image unavailable");
       images.set(url.href, hit);
       if (images.size > 400) images.delete(images.keys().next().value);
     }
@@ -685,6 +690,21 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
       await new Promise((r) => server.close(r));
     },
   };
+}
+
+/**
+ * Cover art at a size that stays sharp on large screens: Google's image
+ * server resized to 544 px, a YouTube video's largest thumbnail, JioSaavn's
+ * 500 px file. Anything else is left as it is.
+ */
+export function sharperArt(href) {
+  if (/(googleusercontent|ggpht)\.com/.test(href)) {
+    return /=(w\d+-h\d+|s\d+)[^/]*$/.test(href) ? href.replace(/=(w\d+-h\d+|s\d+)[^/]*$/, "=w544-h544-l90-rj") : href;
+  }
+  const yt = /^https:\/\/i\d?\.ytimg\.com\/vi(?:_webp)?\/([\w-]{11})\/[a-z]*default\.(?:jpg|webp)/.exec(href);
+  if (yt) return `https://i.ytimg.com/vi/${yt[1]}/maxresdefault.jpg`;
+  if (/saavncdn\.com/.test(href)) return href.replace(/-(50x50|150x150)\./, "-500x500.");
+  return href;
 }
 
 export const SECURITY_HEADERS = {

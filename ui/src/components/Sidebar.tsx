@@ -1,5 +1,6 @@
 import { ArrowDownCircle, Download, Heart, Home, Library, Plus, Search, Settings } from "lucide-react";
 import { installUpdate, useUpdate } from "../update";
+import { dismissToast, useToast } from "../toast";
 import { useLibrary } from "../library";
 import { useNav, type Route } from "../nav";
 import { Art } from "./bits";
@@ -15,6 +16,7 @@ export function Sidebar() {
   const likes = useLibrary((s) => s.likes.length);
   const createPlaylist = useLibrary((s) => s.createPlaylist);
   const update = useUpdate();
+  const undo = useToast();
 
   const item = (r: Route, icon: React.ReactNode, label: string) => (
     <button className={`nav-item ${route.name === r.name ? "is-active" : ""}`} onClick={() => go(r)} title={label} aria-current={route.name === r.name ? "page" : undefined}>
@@ -75,6 +77,13 @@ export function Sidebar() {
           <ArrowDownCircle size={18} />
           <span>Restart to update</span>
         </button>
+      )}
+      {undo.action && undo.message && (
+        <div key={undo.seq} className="side-undo" role="status" title={undo.message}>
+          <span>{undo.message}</span>
+          <button className="toast-action" onClick={() => { undo.action?.run(); dismissToast(); }}>{undo.action.label}</button>
+          <span className="toast-timer" aria-hidden />
+        </div>
       )}
       {item({ name: "settings" }, <Settings size={18} />, "Settings")}
     </aside>

@@ -141,6 +141,7 @@ export function DownloadsPage() {
   const size = Object.values(downloads).reduce((s, d) => s + (d.size ?? 0), 0);
   return (
     <CollectionView header={{ kind: "On this PC", title: "Downloads", subtitle: size ? `${(size / 1_048_576).toFixed(0)} MB` : undefined }} tracks={tracks} label="Downloads"
+      extra={tracks.length > 0 && <button className="btn danger" onClick={() => useLibrary.getState().clearDownloads()}><Trash2 size={16} /> Clear downloads</button>}
       empty={<Empty title="Nothing downloaded yet">Downloaded songs play without internet.</Empty>} />
   );
 }

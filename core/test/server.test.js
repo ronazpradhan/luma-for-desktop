@@ -67,3 +67,12 @@ test("bad ids and bodies are refused", async () => {
   assert.equal((await fetch(`${base}/api/like`, { method: "POST", headers: { "x-luma-key": key }, body: "{}" })).status, 415);
   assert.equal((await fetch(`${base}/stream/not-an-id?k=${key}`)).status, 400);
 });
+
+test("cover art is asked for at a sharp size", async () => {
+  const { sharperArt } = await import("../server.js");
+  assert.equal(sharperArt("https://lh3.googleusercontent.com/abc=w60-h60-l90-rj"), "https://lh3.googleusercontent.com/abc=w544-h544-l90-rj");
+  assert.equal(sharperArt("https://yt3.ggpht.com/xyz=s120"), "https://yt3.ggpht.com/xyz=w544-h544-l90-rj");
+  assert.equal(sharperArt("https://i.ytimg.com/vi/jNQXAC9IVRw/hqdefault.jpg?sqp=abc"), "https://i.ytimg.com/vi/jNQXAC9IVRw/maxresdefault.jpg");
+  assert.equal(sharperArt("https://c.saavncdn.com/123/Song-English-2024-150x150.jpg"), "https://c.saavncdn.com/123/Song-English-2024-500x500.jpg");
+  assert.equal(sharperArt("https://i.scdn.co/image/ab67"), "https://i.scdn.co/image/ab67");
+});
