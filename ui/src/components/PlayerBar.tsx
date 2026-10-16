@@ -79,12 +79,40 @@ export function PlayerBar() {
   const liked = track ? lib.isLiked(track.id) : false;
   const dl = track ? lib.downloadState[track.id] : undefined;
   const downloaded = track ? !!lib.downloads[track.id] : false;
-  const progress = p.duration ? Math.min(1, p.position / p.duration) : 0;
+  // The whole pill is a seek bar: press or drag anywhere that isn't a button.
+  const [scrub, setScrub] = useState<number | null>(null);
+  const [hoverAt, setHoverAt] = useState<{ x: number; f: number } | null>(null);
+  const progress = scrub ?? (p.duration ? Math.min(1, p.position / p.duration) : 0);
+  const free = (e: React.PointerEvent) => !!p.duration && !(e.target as HTMLElement).closest("button, a, input");
+  const fraction = (e: React.PointerEvent) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    return { x: e.clientX - r.left, f: Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)) };
+  };
 
   // Always the small pill: the song, like, download and play controls. The
   // rest (seek, queue, lyrics, volume) is one click away in Now Playing.
   return (
-    <footer className={`playerbar ${p.playing ? "" : "is-paused"}`} aria-label="Player">
+    <footer
+      className={`playerbar ${p.playing ? "" : "is-paused"} ${scrub != null ? "is-scrubbing" : ""} ${hoverAt ? "is-seekable" : ""}`}
+      aria-label="Player"
+      onPointerDown={(e) => {
+        if (!free(e)) return;
+        e.currentTarget.setPointerCapture(e.pointerId);
+        setScrub(fraction(e).f);
+      }}
+      onPointerMove={(e) => {
+        if (scrub != null) { const at = fraction(e); setScrub(at.f); setHoverAt(at); return; }
+        setHoverAt(free(e) ? fraction(e) : null);
+      }}
+      onPointerUp={(e) => {
+        if (scrub == null) return;
+        p.seek(fraction(e).f * p.duration);
+        setScrub(null);
+      }}
+      onPointerCancel={() => setScrub(null)}
+      onPointerLeave={() => scrub == null && setHoverAt(null)}
+    >
+      {hoverAt && <span className="pb-seek-tip" style={{ left: hoverAt.x }}>{formatTime(hoverAt.f * p.duration)}</span>}
       {/* The pill fills with the song's colour as it plays, like liquid. */}
       <span className={`pb-fluid ${progress > 0.002 ? "" : "is-empty"}`} style={{ ["--p" as string]: progress }} aria-hidden>
         <span className="pb-wave" />
