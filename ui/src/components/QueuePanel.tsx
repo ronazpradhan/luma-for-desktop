@@ -9,7 +9,17 @@ export function QueuePanel() {
   const setAutoplay = useLibrary((s) => s.setAutoplay);
   if (!p.queueOpen) return null;
   const upcoming = p.queue.map((t, i) => ({ t, i })).filter(({ i }) => i > p.index);
+  const from = p.autoplayFrom ?? Infinity;
+  const queued = upcoming.filter(({ i }) => i < from);
+  const auto = upcoming.filter(({ i }) => i >= from);
   const current = p.current();
+  const row = ({ t, i }: { t: (typeof p.queue)[number]; i: number }) => (
+    <div key={`${t.id}-${i}`} className="q-row" role="button" tabIndex={0} onClick={() => p.jumpTo(i)} onKeyDown={(e) => e.key === "Enter" && p.jumpTo(i)}>
+      <Art src={t.art} size={40} />
+      <div className="q-text"><b>{t.title}</b><small>{t.artist}</small></div>
+      <button className="icon-btn q-remove" onClick={(e) => { e.stopPropagation(); p.removeFromQueue(i); }} aria-label={`Remove ${t.title} from the queue`} title="Remove"><X size={15} /></button>
+    </div>
+  );
 
   return (
     <aside className="queue glass" aria-label="Queue">
@@ -27,25 +37,21 @@ export function QueuePanel() {
           </div>
         </>
       )}
-      <h3 className="queue-label">{p.sourceLabel ? `Next from ${p.sourceLabel}` : "Next up"}</h3>
       <div className="q-list">
-        {upcoming.length === 0 && (
-          <p className="queue-empty">{autoplay ? "When the queue ends, LUMA keeps going with songs like the last one." : "Nothing queued after this song."}</p>
+        {queued.length > 0 && <h3 className="queue-label">{p.sourceLabel ? `Next from ${p.sourceLabel}` : "Next up"}</h3>}
+        {queued.map(row)}
+        {auto.length > 0 && <h3 className="queue-label">Autoplay · similar songs</h3>}
+        {auto.map(row)}
+        {!queued.length && !auto.length && (
+          <p className="queue-empty">{autoplay ? (p.autoplayLoading ? "Finding similar songs…" : "Similar songs will appear here.") : "Nothing queued after this song."}</p>
         )}
-        {upcoming.map(({ t, i }) => (
-          <div key={`${t.id}-${i}`} className="q-row" role="button" tabIndex={0} onClick={() => p.jumpTo(i)} onKeyDown={(e) => e.key === "Enter" && p.jumpTo(i)}>
-            <Art src={t.art} size={40} />
-            <div className="q-text"><b>{t.title}</b><small>{t.artist}</small></div>
-            <button className="icon-btn q-remove" onClick={(e) => { e.stopPropagation(); p.removeFromQueue(i); }} aria-label={`Remove ${t.title} from the queue`}><X size={15} /></button>
-          </div>
-        ))}
       </div>
       <label className="toggle-row">
         <span>
           <b>Autoplay</b>
           <small>Keep playing similar songs when the queue ends</small>
         </span>
-        <input type="checkbox" className="switch" checked={autoplay} onChange={(e) => setAutoplay(e.target.checked)} />
+        <input type="checkbox" className="switch" checked={autoplay} onChange={async (e) => { await setAutoplay(e.target.checked); p.refreshAutoplay(); }} />
       </label>
     </aside>
   );

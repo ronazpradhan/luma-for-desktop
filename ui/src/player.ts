@@ -23,6 +23,12 @@ type PlayerState = {
   repeat: Repeat;
   source: Resolved | null;
   sourceLabel: string | null;
+  /** Where the songs autoplay added begin in the queue (null: none). */
+  autoplayFrom: number | null;
+  /** Autoplay is looking for similar songs. */
+  autoplayLoading: boolean;
+  /** Re-checks autoplay after it was turned on or off. */
+  refreshAutoplay(): void;
   nowPlayingOpen: boolean;
   queueOpen: boolean;
 
@@ -99,6 +105,7 @@ export const usePlayer = create<PlayerState>((set, get) => {
       audio.src = streamUrl(track.id);
       await audio.play();
       api.recordPlay(slim(track)).then(() => useLibrary.getState().refreshSoon()).catch(() => {});
+      topUp();
     } catch (e) {
       if (token !== loadToken) return;
       if ((e as Error).name === "AbortError") return;
@@ -136,16 +143,36 @@ export const usePlayer = create<PlayerState>((set, get) => {
     }
   }
 
-  async function extendWithRadio(): Promise<boolean> {
-    const { queue } = get();
-    const seed = queue[queue.length - 1];
-    if (!seed) return false;
-    const have = new Set(queue.map((t) => t.id));
-    const radio = await api.radio(seed.id).catch(() => []);
-    const fresh = radio.filter((t) => !have.has(t.id));
-    if (!fresh.length) return false;
-    set({ queue: [...get().queue, ...fresh] });
-    return true;
+  let extending: Promise<boolean> | null = null;
+  /** Songs like the last one in the queue, added after it and marked as autoplay's. */
+  function extendWithRadio(): Promise<boolean> {
+    extending ??= (async () => {
+      const { queue } = get();
+      const seed = queue[queue.length - 1];
+      if (!seed) return false;
+      set({ autoplayLoading: true });
+      const have = new Set(queue.map((t) => t.id));
+      const radio = await api.radio(seed.id).catch(() => []);
+      const fresh = radio.filter((t) => !have.has(t.id)).slice(0, 20);
+      // The queue may have been replaced while radio was on its way.
+      if (get().queue !== queue) { set({ autoplayLoading: false }); return false; }
+      set({ autoplayLoading: false });
+      if (!fresh.length) return false;
+      set({ queue: [...queue, ...fresh], autoplayFrom: get().autoplayFrom ?? queue.length });
+      return true;
+    })().finally(() => { extending = null; });
+    return extending;
+  }
+
+  /**
+   * Near the end of your queue, autoplay's next songs join it (so you can see
+   * them, jump to one or remove one). When those run low, more follow.
+   */
+  function topUp() {
+    const { queue, index, repeat } = get();
+    if (!useLibrary.getState().settings.autoplay || repeat === "all" || index < 0) return;
+    // Two or fewer of your songs left: line autoplay's up behind them.
+    if (queue.length - 1 - index <= 2) extendWithRadio().catch(() => {});
   }
 
   async function advance(auto: boolean) {
@@ -240,6 +267,8 @@ export const usePlayer = create<PlayerState>((set, get) => {
     repeat: "off",
     source: null,
     sourceLabel: null,
+    autoplayFrom: null,
+    autoplayLoading: false,
     nowPlayingOpen: false,
     queueOpen: false,
 
@@ -247,13 +276,13 @@ export const usePlayer = create<PlayerState>((set, get) => {
 
     playList(tracks, startAt = 0, label) {
       if (!tracks.length) return;
-      set({ queue: tracks, sourceLabel: label ?? null });
+      set({ queue: tracks, sourceLabel: label ?? null, autoplayFrom: null });
       start(startAt);
     },
 
     playTrack(track) {
       // A single song plays on its own; autoplay radio carries on after it.
-      set({ queue: [track], sourceLabel: null });
+      set({ queue: [track], sourceLabel: null, autoplayFrom: null });
       start(0);
     },
 
@@ -262,13 +291,17 @@ export const usePlayer = create<PlayerState>((set, get) => {
       if (index < 0) return get().playTrack(track);
       const q = [...queue];
       q.splice(index + 1, 0, track);
-      set({ queue: q });
+      const from = get().autoplayFrom;
+      set({ queue: q, autoplayFrom: from != null && from > index ? from + 1 : from });
       toast(`"${track.title}" plays next`);
     },
 
     addToQueue(tracks) {
       if (get().index < 0) return get().playList(tracks);
-      set({ queue: [...get().queue, ...tracks] });
+      // Your songs go before autoplay's.
+      const { queue, autoplayFrom: from } = get();
+      if (from != null) set({ queue: [...queue.slice(0, from), ...tracks, ...queue.slice(from)], autoplayFrom: from + tracks.length });
+      else set({ queue: [...queue, ...tracks] });
       toast(tracks.length === 1 ? `Added "${tracks[0].title}" to the queue` : `Added ${tracks.length} songs to the queue`);
     },
 
@@ -276,7 +309,10 @@ export const usePlayer = create<PlayerState>((set, get) => {
       const { queue, index } = get();
       if (i === index) return;
       const q = queue.filter((_, k) => k !== i);
-      set({ queue: q, index: i < index ? index - 1 : index });
+      const from = get().autoplayFrom;
+      const nextFrom = from == null ? null : i < from ? from - 1 : from;
+      set({ queue: q, index: i < index ? index - 1 : index, autoplayFrom: nextFrom != null && nextFrom >= q.length ? null : nextFrom });
+      topUp();
     },
 
     jumpTo(i) {
@@ -292,6 +328,15 @@ export const usePlayer = create<PlayerState>((set, get) => {
     },
 
     next: () => { advance(false); },
+
+    refreshAutoplay() {
+      const { queue, index, autoplayFrom: from } = get();
+      if (useLibrary.getState().settings.autoplay) return topUp();
+      // Turned off: autoplay's songs that haven't played yet leave the queue.
+      if (from == null) return;
+      const keep = Math.max(from, index + 1);
+      set({ queue: queue.slice(0, keep), autoplayFrom: keep > from ? from : null });
+    },
 
     previous() {
       if (audio.currentTime > 4 || get().index === 0) {

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, type SignInResult } from "../api";
 import { toast } from "../toast";
 import { useLibrary } from "../library";
+import { usePlayer } from "../player";
 import { useAsync } from "./common";
 import { Art } from "../components/bits";
 import { SpotifySection } from "../components/SpotifySection";
@@ -61,7 +62,7 @@ export function Settings() {
             <b>Autoplay</b>
             <small>Keep playing similar songs when the queue ends.</small>
           </span>
-          <input type="checkbox" className="switch" checked={autoplay} onChange={(e) => setAutoplay(e.target.checked)} />
+          <input type="checkbox" className="switch" checked={autoplay} onChange={async (e) => { await setAutoplay(e.target.checked); usePlayer.getState().refreshAutoplay(); }} />
         </label>
       </section>
 
