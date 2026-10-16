@@ -1,5 +1,5 @@
 import { Heart, ListMusic, Maximize2, Mic2, Pause, Play, Repeat, Repeat1, Shuffle, SkipBack, SkipForward, Volume1, Volume2, VolumeX } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { formatTime } from "../api";
 import { useLibrary } from "../library";
 import { useNav } from "../nav";
@@ -69,8 +69,25 @@ export function PlayerBar() {
   const downloaded = track ? !!lib.downloads[track.id] : false;
   const VolIcon = p.muted || p.volume === 0 ? VolumeX : p.volume < 0.5 ? Volume1 : Volume2;
 
+  // A small pill until you reach for it: hovering (or tabbing into it) opens
+  // the full player, which waits a moment before shrinking back.
+  const [open, setOpen] = useState(false);
+  const closing = useRef<number | undefined>(undefined);
+  const show = () => { clearTimeout(closing.current); setOpen(true); };
+  const hide = () => { clearTimeout(closing.current); closing.current = window.setTimeout(() => setOpen(false), 700); };
+  useEffect(() => () => clearTimeout(closing.current), []);
+  const progress = p.duration ? Math.min(1, p.position / p.duration) : 0;
+
   return (
-    <footer className="playerbar" aria-label="Player">
+    <footer
+      className={`playerbar ${open ? "is-open" : ""}`}
+      aria-label="Player"
+      onPointerEnter={show}
+      onPointerLeave={hide}
+      onFocus={show}
+      onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) hide(); }}
+    >
+      <span className="pb-progress" style={{ ["--p" as string]: progress }} aria-hidden />
       <div className="pb-track">
         {track ? (
           <>

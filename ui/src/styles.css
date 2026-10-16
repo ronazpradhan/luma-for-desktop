@@ -194,7 +194,7 @@ h1, h2, h3, p { margin: 0; }
 }
 .topbar > *:not(.drag-space) { -webkit-app-region: no-drag; }
 .drag-space { flex: 1; align-self: stretch; }
-.main { flex: 1; overflow-y: auto; overflow-x: hidden; padding-bottom: calc(var(--bar-h) + 32px); animation: page-in 0.28s var(--ease); }
+.main { flex: 1; overflow-y: auto; overflow-x: hidden; padding-bottom: calc(60px + 36px); animation: page-in 0.28s var(--ease); }
 @keyframes page-in { from { opacity: 0; transform: translateY(6px); } }
 
 /* ---- controls --------------------------------------------------------- */
@@ -416,15 +416,18 @@ kbd { display: inline-block; min-width: 26px; padding: 2px 7px; border-radius: 6
   right: var(--pb-right);
   bottom: 20px;
   margin-inline: auto;
-  width: min(880px, calc(100vw - var(--pb-left) - var(--pb-right) - 24px));
-  height: var(--bar-h);
+  /* Resting: a small pill with the song, play/pause and skip. */
+  width: min(440px, calc(100vw - var(--pb-left) - var(--pb-right) - 24px));
+  height: 60px;
   z-index: 5;
-  border-radius: var(--radius-panel);
+  border-radius: 30px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(360px, 1.3fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 16px;
-  padding: 0 16px 0 12px;
+  gap: 12px;
+  padding: 0 10px 0 8px;
+  overflow: hidden;
+  transition: width 0.42s var(--ease), height 0.42s var(--ease), border-radius 0.42s var(--ease), padding 0.42s var(--ease);
   /* Liquid Glass, regular variant: the one glass surface in LUMA. It floats
      over the page, blurs whatever scrolls beneath it and takes its colour
      from that; a lit top edge and a soft sheen give it depth. */
@@ -438,6 +441,30 @@ kbd { display: inline-block; min-width: 26px; padding: 2px 7px; border-radius: 6
     inset 0 -1px 0 rgb(0 0 0 / 0.25),
     0 18px 44px rgb(0 0 0 / 0.42);
 }
+/* Open (hovered or focused): the whole player. */
+.playerbar.is-open {
+  width: min(880px, calc(100vw - var(--pb-left) - var(--pb-right) - 24px));
+  height: var(--bar-h);
+  border-radius: var(--radius-panel);
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 1.3fr) minmax(0, 1fr);
+  gap: 16px;
+  padding: 0 16px 0 12px;
+}
+.playerbar:not(.is-open) .pb-right,
+.playerbar:not(.is-open) .pb-like,
+.playerbar:not(.is-open) .seek,
+.playerbar:not(.is-open) .transport > :first-child,
+.playerbar:not(.is-open) .transport > :last-child { display: none; }
+.playerbar:not(.is-open) .pb-art .art { width: 44px !important; height: 44px !important; border-radius: 50%; }
+.playerbar:not(.is-open) .pb-track { gap: 10px; }
+.playerbar:not(.is-open) .transport { gap: 4px; }
+.playerbar:not(.is-open) .play-btn { width: 38px; height: 38px; }
+.playerbar.is-open .pb-right, .playerbar.is-open .seek, .playerbar.is-open .pb-like { animation: fade-in 0.3s 0.12s both; }
+/* Resting, a hairline along the bottom shows how far the song has played. */
+.pb-progress { position: absolute; left: 22px; right: 22px; bottom: 4px; height: 2px; border-radius: 2px; background: rgb(255 255 255 / 0.12); pointer-events: none; transition: opacity 0.25s; }
+.pb-progress::after { content: ""; position: absolute; inset: 0; transform-origin: left; transform: scaleX(var(--p, 0)); background: var(--accent); border-radius: inherit; }
+.playerbar.is-open .pb-progress { opacity: 0; }
+
 /* The sheen: light catching the glass from the top left. */
 .playerbar::before {
   content: "";
@@ -623,7 +650,8 @@ kbd { display: inline-block; min-width: 26px; padding: 2px 7px; border-radius: 6
   .side-row { justify-content: center; padding: 6px 0; }
   .row { grid-template-columns: 32px 40px minmax(0, 1fr) auto; }
   .row-album { display: none; }
-  .playerbar, .app.with-queue .playerbar { --pb-left: calc(76px + 16px); --pb-right: 8px; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; }
+  .playerbar, .app.with-queue .playerbar { --pb-left: calc(76px + 16px); --pb-right: 8px; }
+  .playerbar.is-open { grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; }
   .pb-center .seek { display: none; }
   .volume { display: none; }
   .np-body { grid-template-columns: 1fr; padding: 0 28px 24px; }
