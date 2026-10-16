@@ -35,7 +35,15 @@ jobs:
       # parallel uploads can each make their own release for the same tag.
       - name: Create the release
         shell: bash
-        run: gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "LUMA for Windows ${GITHUB_REF_NAME#v}" --notes "Download **LUMA-Setup.exe** below and run it. Already have LUMA 0.6.0 or newer? It updates itself."
+        # Retried, and fine as long as the release exists at the end: a hiccup
+        # here once left a release page with no installer on it.
+        run: |
+          for i in 1 2 3; do
+            gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 && exit 0
+            gh release create "$GITHUB_REF_NAME" --title "LUMA for Windows ${GITHUB_REF_NAME#v}" --notes "Download **LUMA-Setup.exe** below and run it. Already have LUMA 0.6.0 or newer? It updates itself." && exit 0
+            sleep $((i * 5))
+          done
+          gh release view "$GITHUB_REF_NAME"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
