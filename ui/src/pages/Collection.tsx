@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { EyeOff, Pencil, Play, Shuffle, Trash2 } from "lucide-react";
 import { api, type Track } from "../api";
-import { Art, DownloadGlyph, DownloadedBadge, Empty, Failed, SkeletonRows } from "../components/bits";
+import { DownloadGlyph, DownloadedBadge, Empty, Failed, PlaylistCover, SkeletonRows } from "../components/bits";
 import { TrackList } from "../components/TrackList";
 import { useLibrary } from "../library";
 import { useNav } from "../nav";
@@ -25,7 +25,7 @@ function CollectionView({ header, tracks, label, showAlbum = true, numbered = fa
   return (
     <div className="page">
       <header className="collection-head">
-        <Art src={header.art ?? tracks.find((t) => t.art)?.art} className="collection-art" />
+        <PlaylistCover art={header.art} tracks={tracks} name={header.title} size={220} className="collection-art" />
         <div className="collection-text">
           <span className="collection-kind">{header.kind}</span>
           <h1>{header.title}</h1>

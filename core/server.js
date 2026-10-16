@@ -45,9 +45,20 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
   const ytdlp = createYtDlp({ binDir: path.join(dataDir, "bin"), log });
   const youtubeAuth = await openYouTubeAuth({ dataDir, vault });
   const ytmusic = createYtMusic({ auth: () => youtubeAuth.headers() });
+  // yt-dlp's version runs a program: asked once an hour, not on every visit to Settings.
+  let ytdlpCache = null; // { at, value }
+  async function ytdlpVersion() {
+    if (ytdlpCache && Date.now() - ytdlpCache.at < 3_600_000) return ytdlpCache.value;
+    const value = await ytdlp.version().catch((e) => `unavailable: ${e.message}`);
+    ytdlpCache = { at: Date.now(), value };
+    return value;
+  }
+
   let accountCache = null; // { at, account }
   async function account() {
     if (!youtubeAuth.signedIn()) return null;
+    // Signed in, the account is remembered for the session (signing in or out refreshes it).
+    if (accountCache?.account) return accountCache.account;
     if (accountCache && Date.now() - accountCache.at < 10 * 60_000) return accountCache.account;
     const a = await ytmusic.account().catch(() => null);
     accountCache = { at: Date.now(), account: a };
@@ -440,7 +451,7 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
 
     switch (`${m} ${seg[0]}${seg.length > 2 ? `/${seg[2]}` : ""}`) {
       case "GET status":
-        return send(res, 200, { version, ytdlp: await ytdlp.version().catch((e) => `unavailable: ${e.message}`), youtube: { signedIn: youtubeAuth.signedIn(), canSignIn: !!vault, account: await account() } });
+        return send(res, 200, { version, ytdlp: await ytdlpVersion(), youtube: { signedIn: youtubeAuth.signedIn(), canSignIn: !!vault, account: await account() } });
       case "GET home":
         return send(res, 200, { shelves: await home() });
       case "GET foryou":

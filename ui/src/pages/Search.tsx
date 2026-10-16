@@ -1,8 +1,9 @@
+import { useEffect, useState } from "react";
 import { api } from "../api";
 import { Play } from "lucide-react";
 import { Art, Empty, Failed, SkeletonRows, SkeletonShelf } from "../components/bits";
 import { coolOnLeave, usePlayer, warmOnHover } from "../player";
-import { Shelf } from "../components/Shelf";
+import { Shelf, TileCard } from "../components/Shelf";
 import { TrackList } from "../components/TrackList";
 import { useNav } from "../nav";
 import { useAsync } from "./common";
@@ -12,43 +13,67 @@ export function Search({ q }: { q?: string }) {
   return <Results q={q} />;
 }
 
+type Filter = "all" | "songs" | "artists" | "albums";
+
 function Results({ q }: { q: string }) {
   const res = useAsync(() => api.search(q), [q]);
-  if (res.loading && !res.data) return <div className="page"><header className="page-hero"><h1 className="hello">{q}</h1></header><SkeletonRows count={6} /><SkeletonShelf /></div>;
+  const [filter, setFilter] = useState<Filter>("all");
+  useEffect(() => setFilter("all"), [q]);
+  if (res.loading && !res.data) return <div className="page"><div className="chips"><span className="sk" style={{ width: 280, height: 34, borderRadius: 999 }} /></div><SkeletonRows count={6} /><SkeletonShelf /></div>;
   if (res.error && !res.data) return <div className="page"><Failed message={res.error} onRetry={res.reload} /></div>;
   const data = res.data!;
   const nothing = !data.songs.length && !data.albums.length && !data.artists.length;
+  const chips: { id: Filter; label: string; count: number }[] = [
+    { id: "all", label: "All", count: 1 },
+    { id: "songs", label: "Songs", count: data.songs.length },
+    { id: "artists", label: "Artists", count: data.artists.length },
+    { id: "albums", label: "Albums", count: data.albums.length },
+  ];
+
   return (
     <div className={`page ${res.loading ? "is-stale" : ""}`}>
-      <header className="page-hero">
-        <h1 className="hello">{q}</h1>
-      </header>
+      <div className="chips" role="tablist" aria-label="Show">
+        {chips.filter((c) => c.count > 0).map((c) => (
+          <button key={c.id} role="tab" aria-selected={filter === c.id} className={`chip ${filter === c.id ? "is-on" : ""}`} onClick={() => setFilter(c.id)}>{c.label}</button>
+        ))}
+      </div>
       {nothing && <Empty title="Nothing found">Check the spelling, or try the artist's name.</Empty>}
-      {data.songs.length > 0 && (
-        <div className="top-result">
-          <section>
-            <h2 className="block-title">Top result</h2>
-            <button className="top-card" onClick={() => usePlayer.getState().playTrack(data.songs[0])} onPointerEnter={() => warmOnHover(data.songs[0])} onPointerLeave={coolOnLeave}>
-              <Art src={data.songs[0].art} />
-              <h3>{data.songs[0].title}</h3>
-              <p>Song · {data.songs[0].artist}</p>
-              <span className="tile-play" aria-hidden><Play size={22} fill="currentColor" /></span>
-            </button>
-          </section>
-          <section className="top-songs">
-            <h2 className="block-title">Songs</h2>
-            <TrackList tracks={data.songs.slice(0, 4)} single showAlbum={false} />
-          </section>
-        </div>
+
+      {filter === "all" && (
+        <>
+          {data.songs.length > 0 && (
+            <div className="top-result">
+              <section>
+                <h2 className="block-title">Top result</h2>
+                <button className="top-card" onClick={() => usePlayer.getState().playTrack(data.songs[0])} onPointerEnter={() => warmOnHover(data.songs[0])} onPointerLeave={coolOnLeave}>
+                  <Art src={data.songs[0].art} />
+                  <h3>{data.songs[0].title}</h3>
+                  <p>Song · {data.songs[0].artist}</p>
+                  <span className="tile-play" aria-hidden><Play size={22} fill="currentColor" /></span>
+                </button>
+              </section>
+              <section className="top-songs">
+                <h2 className="block-title">Songs</h2>
+                <TrackList tracks={data.songs.slice(1, 5)} single showAlbum={false} />
+              </section>
+            </div>
+          )}
+          {data.artists.length > 0 && <Shelf title="Artists" items={data.artists} />}
+          {data.albums.length > 0 && <Shelf title="Albums" items={data.albums} />}
+          {data.songs.length > 5 && (
+            <section className="block">
+              <header className="block-head">
+                <h2 className="block-title">More songs</h2>
+                <button className="btn btn-quiet" onClick={() => setFilter("songs")}>See all songs</button>
+              </header>
+              <TrackList tracks={data.songs.slice(5, 11)} single />
+            </section>
+          )}
+        </>
       )}
-      {data.songs.length > 4 && (
-        <section className="block">
-          <h2 className="block-title">More songs</h2>
-          <TrackList tracks={data.songs.slice(4)} single />
-        </section>
-      )}
-      {data.artists.length > 0 && <Shelf title="Artists" items={data.artists} />}
-      {data.albums.length > 0 && <Shelf title="Albums" items={data.albums} />}
+      {filter === "songs" && <TrackList tracks={data.songs} single />}
+      {filter === "artists" && <div className="tile-grid">{data.artists.map((a) => <TileCard key={a.id} item={a} />)}</div>}
+      {filter === "albums" && <div className="tile-grid">{data.albums.map((a) => <TileCard key={a.id} item={a} />)}</div>}
     </div>
   );
 }

@@ -18,7 +18,7 @@ import { AlbumPage, DownloadsPage, LikedPage, PlaylistPage, YtPlaylistPage } fro
 import { Home } from "./pages/Home";
 import { LibraryPage } from "./pages/LibraryPage";
 import { Search } from "./pages/Search";
-import { Settings } from "./pages/Settings";
+import { Settings, prefetchStatus } from "./pages/Settings";
 
 function Page() {
   const route = useNav((s) => s.route);
@@ -48,6 +48,7 @@ export function App() {
 
   useEffect(() => {
     load().catch(() => {});
+    prefetchStatus();
     useLibrary.getState().loadYouTube();
   }, [load]);
   useEffect(() => { main.current?.scrollTo({ top: 0 }); setScrolled(false); }, [route]);

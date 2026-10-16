@@ -13,10 +13,16 @@ const BROWSER_NAMES: Record<string, string> = { firefox: "Firefox" };
 /** The open-source exporter yt-dlp recommends (Chrome Web Store; works in Edge and Brave too). */
 const EXTENSION_URL = "https://chrome.google.com/webstore/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc";
 
+type Status = Awaited<ReturnType<typeof api.status>>;
+/** The last status seen: Settings opens with it at once and refreshes quietly. */
+let lastStatus: Status | null = null;
+export const prefetchStatus = () => api.status().then((s) => { lastStatus = s; }).catch(() => {});
+
 export function Settings() {
   const autoplay = useLibrary((s) => s.settings.autoplay);
   const setAutoplay = useLibrary((s) => s.setAutoplay);
-  const status = useAsync(() => api.status(), []);
+  const fetched = useAsync(() => api.status().then((s) => (lastStatus = s)), []);
+  const status = { ...fetched, data: fetched.data ?? lastStatus };
   const [busy, setBusy] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [browsers, setBrowsers] = useState<string[]>([]);
@@ -79,18 +85,20 @@ export function Settings() {
                 </span>
               </span>
             )}
+            {status.data && (
             <p>
-              {yt?.signedIn
-                ? yt.account
-                  ? "Your likes and playlists are in your Library."
-                  : "This sign-in stopped working. Disconnect and connect again."
-                : "See your YouTube Music likes and playlists, and play hard-to-find songs."}
-            </p>
+                {yt?.signedIn
+                  ? yt.account
+                    ? "Your likes and playlists are in your Library."
+                    : "This sign-in stopped working. Disconnect and connect again."
+                  : "See your YouTube Music likes and playlists, and play hard-to-find songs."}
+              </p>
+            )}
           </span>
           {yt?.signedIn && <button className="btn" onClick={signOut}>Disconnect</button>}
         </div>
         {!bridge && <p className="muted small">Open the LUMA app to sign in.</p>}
-        {bridge && !yt?.signedIn && yt?.canSignIn !== false && (
+        {bridge && status.data && !yt?.signedIn && yt?.canSignIn !== false && (
           <>
             <ol className="steps">
               <li>Add the <a className="link strong" href={EXTENSION_URL} target="_blank" rel="noreferrer">Get cookies.txt LOCALLY</a> extension.</li>
