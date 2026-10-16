@@ -1,7 +1,7 @@
 {
   "name": "luma-desktop",
   "productName": "LUMA",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "LUMA music player for Windows",
   "author": "Ronaz Pradhan",
   "license": "GPL-3.0-only",
@@ -42,7 +42,7 @@
   "build": {
     "appId": "com.luma.desktop",
     "productName": "LUMA",
-    "copyright": "Copyright \u00a9 2026 Ronaz Pradhan",
+    "copyright": "Copyright © 2026 Ronaz Pradhan",
     "directories": {
       "output": "release",
       "buildResources": "build"

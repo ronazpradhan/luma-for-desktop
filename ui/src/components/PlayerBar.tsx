@@ -70,7 +70,7 @@ export function PlayerBar() {
   const VolIcon = p.muted || p.volume === 0 ? VolumeX : p.volume < 0.5 ? Volume1 : Volume2;
 
   return (
-    <footer className="playerbar surface" aria-label="Player">
+    <footer className="playerbar" aria-label="Player">
       <div className="pb-track">
         {track ? (
           <>
