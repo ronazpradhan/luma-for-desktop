@@ -76,3 +76,48 @@ test("cover art is asked for at a sharp size", async () => {
   assert.equal(sharperArt("https://c.saavncdn.com/123/Song-English-2024-150x150.jpg"), "https://c.saavncdn.com/123/Song-English-2024-500x500.jpg");
   assert.equal(sharperArt("https://i.scdn.co/image/ab67"), "https://i.scdn.co/image/ab67");
 });
+
+test("downloads are recognised as audio by their first bytes", async () => {
+  const { looksLikeAudio } = await import("../server.js");
+  assert.ok(looksLikeAudio(Buffer.from("1a45dfa3a34286810142f7810142f2", "hex")));
+  assert.ok(looksLikeAudio(Buffer.from("00000020667479704d344120", "hex")));
+  assert.ok(!looksLikeAudio(Buffer.from("<html><body>nope</body></html>")));
+  assert.ok(!looksLikeAudio(Buffer.alloc(0)));
+});
+
+test("a damaged download is dropped instead of played", async () => {
+  const { mkdir, writeFile, stat } = await import("node:fs/promises");
+  const d = await mkdtemp(path.join(tmpdir(), "luma-test-"));
+  const music = path.join(d, "music");
+  await mkdir(music);
+  const track = { id: "FJX0JPXD2nM", title: "we fell in love in october", artist: "girl in red", duration: 184 };
+  const cut = path.join(music, "cut.webm");
+  // A real WebM header, then a few KB: the rest never arrived.
+  await writeFile(cut, Buffer.concat([Buffer.from("1a45dfa3a34286810142f7810142f2", "hex"), Buffer.alloc(8000)]));
+  const good = path.join(music, "good.m4a");
+  await writeFile(good, Buffer.concat([Buffer.from("00000020667479704d344120", "hex"), Buffer.alloc(184 * 6000)]));
+  const goodTrack = { id: "V-uIp-WuD60", title: "Patient Zero", artist: "Taylor Swift", duration: 184 };
+  await writeFile(path.join(d, "library.json"), JSON.stringify({
+    downloads: {
+      [track.id]: { path: cut, type: "audio/webm", size: 8015, track, at: 1 },
+      [goodTrack.id]: { path: good, type: "audio/mp4", size: 184 * 6000 + 12, track: goodTrack, at: 2 },
+    },
+  }));
+  const s = await startServer({ port: 0, key, dataDir: d, musicDir: music, warmUp: false, log: () => {} });
+  try {
+    const at = `http://127.0.0.1:${s.port}`;
+    const h = { "x-luma-key": key, "Content-Type": "application/json" };
+    const ok = await (await fetch(`${at}/api/resolve`, { method: "POST", headers: h, body: JSON.stringify({ track: goodTrack }) })).json();
+    assert.equal(ok.source, "download");
+    // The cut one streams (or fails to here, offline) but is never served from disk again.
+    const res = await fetch(`${at}/api/resolve`, { method: "POST", headers: h, body: JSON.stringify({ track }) });
+    if (res.ok) assert.notEqual((await res.json()).source, "download");
+    const lib = await (await fetch(`${at}/api/library`, { headers: h })).json();
+    assert.ok(!lib.downloads[track.id]);
+    assert.ok(lib.downloads[goodTrack.id]);
+    assert.equal(await stat(cut).catch(() => null), null);
+  } finally {
+    await s.close();
+    await rm(d, { recursive: true, force: true });
+  }
+});

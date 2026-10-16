@@ -33,7 +33,7 @@ export type Library = {
 export type LyricLine = { time: number | null; end?: number; text: string; words?: { text: string; time: number; end: number }[]; part?: number };
 /** Lyrics as the engine gives them: lines (timed, maybe word by word) in sections such as Verse 1 or Chorus. */
 export type Lyrics = { synced: boolean; wordSynced?: boolean; source?: string; lines: LyricLine[]; parts?: { name: string | null }[] } | null;
-export type Resolved = { source: "jiosaavn" | "youtube" | "download"; codec: string; kbps?: number | null };
+export type Resolved = { source: "jiosaavn" | "youtube" | "download"; codec: string; kbps?: number | null; /** The download was damaged and is gone. */ redownload?: boolean };
 export type DownloadState = Record<string, { state: "running" | "done" | "failed"; progress: number; error?: string }>;
 
 export type SpotifyImport =
@@ -135,7 +135,7 @@ export const api = {
   deletePlaylist: (id: string) => call<Library>("DELETE", `/api/playlists/${id}`),
   addToPlaylist: (id: string, tracks: Track[]) => call<Library>("POST", `/api/playlists/${id}/tracks`, { tracks: tracks.map(slim) }),
   removeFromPlaylist: (id: string, trackId: string) => call<Library>("DELETE", `/api/playlists/${id}/tracks/${trackId}`),
-  download: (t: Track) => call<{ ok: true }>("POST", "/api/download", { track: slim(t) }),
+  download: (t: Track, again = false) => call<{ ok: true }>("POST", "/api/download", { track: slim(t), again }),
   downloads: () => call<DownloadState>("GET", "/api/downloads"),
   removeDownload: (id: string) => call<Library>("DELETE", `/api/download/${id}`),
   settings: (patch: Partial<Library["settings"]>) => call<Library["settings"]>("PATCH", "/api/settings", patch),

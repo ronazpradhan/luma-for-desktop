@@ -23,6 +23,8 @@ type LibraryState = Library & {
   deletePlaylist(id: string): void;
   download(tracks: Track[]): Promise<void>;
   removeDownload(id: string): void;
+  /** Replaces a download that won't play, quietly. */
+  redownload(t: Track): void;
   /** Every download, with Undo for 5 s. */
   clearDownloads(): void;
   setAutoplay(on: boolean): Promise<void>;
@@ -196,6 +198,13 @@ export const useLibrary = create<LibraryState>((set, get) => {
           for (const id of ids) lib = await api.removeDownload(id).catch(() => lib);
           return lib;
         });
+    },
+
+    redownload(t) {
+      const downloads = { ...get().downloads };
+      delete downloads[t.id];
+      set({ downloads, downloadState: { ...get().downloadState, [t.id]: { state: "running", progress: 0 } } });
+      api.download(t, true).then(pollDownloads, () => {});
     },
 
     removeDownload(id) {

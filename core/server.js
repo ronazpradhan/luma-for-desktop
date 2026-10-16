@@ -4,7 +4,7 @@
 // other device can drive it.
 
 import { createReadStream } from "node:fs";
-import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, open, readFile, rm, stat, writeFile } from "node:fs/promises";
 import http from "node:http";
 import path from "node:path";
 import { Readable } from "node:stream";
@@ -27,6 +27,8 @@ const VIDEO_ID = /^[A-Za-z0-9_-]{11}$/;
 const BROWSE_ID = /^[A-Za-z0-9_-]{2,80}$/;
 const IMAGE_HOSTS = [/^yt3\.googleusercontent\.com$/, /^lh\d\.googleusercontent\.com$/, /^yt\d\.ggpht\.com$/, /^i\d?\.ytimg\.com$/, /^c\.saavncdn\.com$/, /^(i|mosaic|image-cdn-[a-z]+)\.scdn\.co$/];
 const MAX_BODY = 1_000_000;
+/** 32 kbps: below anything either source serves, so a file this thin is cut short. */
+const MIN_BYTES_PER_SECOND = 4000;
 const MIME = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".ico": "image/x-icon", ".woff2": "font/woff2", ".json": "application/json" };
 
 class HttpError extends Error {
@@ -339,6 +341,28 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
     }
   }
 
+  /** Why a downloaded file can't be trusted, or null when it looks whole. */
+  async function damaged(entry, t) {
+    const info = await stat(entry.path).catch(() => null);
+    if (!info) return "file missing";
+    if (entry.size && info.size < entry.size) return `file shrank to ${info.size} of ${entry.size} bytes`;
+    const head = await readHead(entry.path).catch(() => null);
+    if (!head || !looksLikeAudio(head)) return "not an audio file";
+    // Well under the lowest bitrate either source uses: most of the song never arrived.
+    const seconds = t?.duration ?? entry.track?.duration;
+    if (seconds && info.size < seconds * MIN_BYTES_PER_SECOND) return `only ${info.size} bytes for ${Math.round(seconds)} s`;
+    return null;
+  }
+
+  async function forgetDownload(id) {
+    const entry = store.download(id);
+    if (entry) {
+      await rm(entry.path, { force: true });
+      store.setDownload(id, null);
+    }
+    downloads.delete(id);
+  }
+
   async function download(t) {
     if (downloads.get(t.id)?.state === "running") return;
     downloads.set(t.id, { state: "running", progress: 0 });
@@ -364,7 +388,12 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
         downloads.set(t.id, { state: "running", progress: total ? got / total : 0 });
         if (up.status === 200 || !buf.length || (total && got >= total)) break;
       }
-      await writeFile(file, Buffer.concat(chunks));
+      // A cut-off download plays as a song that ends the moment it starts.
+      if (total && got < total) throw new Error(`incomplete: ${got} of ${total} bytes`);
+      const whole = Buffer.concat(chunks);
+      if (!looksLikeAudio(whole)) throw new Error("not an audio file");
+      if (t.duration && got < t.duration * MIN_BYTES_PER_SECOND) throw new Error(`only ${got} bytes for ${Math.round(t.duration)} s`);
+      await writeFile(file, whole);
       store.setDownload(t.id, { path: file, type, size: got, track: t, at: Date.now() });
       downloads.set(t.id, { state: "done", progress: 1 });
     } catch (e) {
@@ -492,14 +521,22 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
         const t = track(b.track);
         log(`play "${t.title}" by ${t.artist} (${t.id})${b.online ? " online" : ""}`);
         const local = b.online ? null : store.download(t.id);
-        if (local && (await stat(local.path).catch(() => null))) return send(res, 200, { source: "download", codec: local.type === "audio/webm" ? "opus" : "aac" });
+        let redownload = false;
+        if (local) {
+          const why = await damaged(local, t);
+          if (!why) return send(res, 200, { source: "download", codec: local.type === "audio/webm" ? "opus" : "aac" });
+          // Streamed instead; the app downloads it again.
+          log(`download of "${t.title}" (${t.id}) is damaged (${why}); streaming it`);
+          await forgetDownload(t.id);
+          redownload = true;
+        }
         const s = await resolver.resolve(t).catch((e) => {
           log(`could not play "${t.title}" (${t.id}): ${e.code ?? ""} ${e.message}`);
           const err = new HttpError(502, e.code ? e.message : `Couldn't find this song (${e.message})`);
           err.code = e.code;
           throw err;
         });
-        return send(res, 200, { source: s.source, codec: s.codec, kbps: s.kbps });
+        return send(res, 200, { source: s.source, codec: s.codec, kbps: s.kbps, ...(redownload && { redownload }) });
       }
       case "POST prefetch": {
         // Hovering a song: the cheap sources only, so the click finds it ready.
@@ -547,19 +584,20 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
         return send(res, 200, libraryView());
       }
       case "POST download": {
-        const t = track((await body(req)).track);
+        const b = await body(req);
+        const t = track(b.track);
+        // Again: the copy on disk broke.
+        if (b.again) {
+          log(`downloading "${t.title}" (${t.id}) again`);
+          await forgetDownload(t.id);
+        }
         download(t);
         return send(res, 202, { ok: true });
       }
       case "GET downloads":
         return send(res, 200, Object.fromEntries(downloads));
       case "DELETE download": {
-        const entry = store.download(needId(VIDEO_ID));
-        if (entry) {
-          await rm(entry.path, { force: true });
-          store.setDownload(id, null);
-        }
-        downloads.delete(id);
+        await forgetDownload(needId(VIDEO_ID));
         return send(res, 200, libraryView());
       }
       case "PATCH settings": {
@@ -708,6 +746,23 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
  * server resized to 544 px, a YouTube video's largest thumbnail, JioSaavn's
  * 500 px file. Anything else is left as it is.
  */
+/** WebM (EBML) or MP4 (`ftyp` box): what downloads are saved as. */
+export function looksLikeAudio(head) {
+  if (!head || head.length < 12) return false;
+  if (head[0] === 0x1a && head[1] === 0x45 && head[2] === 0xdf && head[3] === 0xa3) return true;
+  return head.toString("latin1", 4, 8) === "ftyp";
+}
+
+async function readHead(file) {
+  const fh = await open(file, "r");
+  try {
+    const { buffer, bytesRead } = await fh.read(Buffer.alloc(12), 0, 12, 0);
+    return buffer.subarray(0, bytesRead);
+  } finally {
+    await fh.close();
+  }
+}
+
 export function sharperArt(href) {
   if (/(googleusercontent|ggpht)\.com/.test(href)) {
     return /=(w\d+-h\d+|s\d+)[^/]*$/.test(href) ? href.replace(/=(w\d+-h\d+|s\d+)[^/]*$/, "=w544-h544-l90-rj") : href;

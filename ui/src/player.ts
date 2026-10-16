@@ -64,6 +64,15 @@ let loadToken = 0;
 let anchor = { pos: 0, at: 0, running: false };
 const expectedPosition = () => anchor.pos + (anchor.running ? (performance.now() - anchor.at) / 1000 : 0);
 const setAnchor = (running: boolean) => { anchor = { pos: audio.currentTime, at: performance.now(), running }; };
+/**
+ * How far the song really got: moves with normal playback and with seeks LUMA
+ * asked for, never with a jump the player made by itself. A damaged file can
+ * start the player at the very end, which the clock above can't tell apart.
+ */
+let reached = 0;
+let lastSeen = 0;
+let lastSeenAt = 0;
+const seekTo = (sec: number) => { reached = lastSeen = sec; lastSeenAt = performance.now(); audio.currentTime = sec; };
 /** One recovery per song start, so a song that keeps breaking is skipped, not retried forever. */
 let recovered = -1;
 const resolved = new Map<string, Promise<Resolved>>();
@@ -95,6 +104,7 @@ export const usePlayer = create<PlayerState>((set, get) => {
     if (!track) return;
     const token = ++loadToken;
     recovered = -1;
+    reached = lastSeen = 0; lastSeenAt = performance.now();
     audio.pause();
     set({ index, loading: true, playing: false, position: 0, duration: track.duration ?? 0, source: null });
     updateSession(track);
@@ -102,6 +112,10 @@ export const usePlayer = create<PlayerState>((set, get) => {
       const source = await lookUp(track);
       if (token !== loadToken) return;
       set({ source });
+      if (source.redownload) {
+        api.log(`the download of "${track.title}" was damaged; streaming it and downloading it again`);
+        useLibrary.getState().redownload(track);
+      }
       audio.src = streamUrl(track.id);
       await audio.play();
       api.recordPlay(slim(track)).then(() => useLibrary.getState().refreshSoon()).catch(() => {});
@@ -133,7 +147,8 @@ export const usePlayer = create<PlayerState>((set, get) => {
       if (token !== loadToken) return;
       set({ source });
       audio.src = streamUrl(track.id, true);
-      if (from > 1) audio.addEventListener("loadedmetadata", () => { audio.currentTime = from; }, { once: true });
+      reached = lastSeen = 0; lastSeenAt = performance.now();
+      if (from > 1) audio.addEventListener("loadedmetadata", () => seekTo(from), { once: true });
       await audio.play();
     } catch (e) {
       if (token !== loadToken || (e as Error).name === "AbortError") return;
@@ -195,7 +210,7 @@ export const usePlayer = create<PlayerState>((set, get) => {
     api.log(`"${t.title}" (${t.id}) broke at ${at.toFixed(1)} s from ${get().source?.source ?? "?"}: ${why}${fresh ? "; looking it up again" : "; skipping"}`);
     resolved.delete(t.id);
     if (fresh) {
-      if (get().source?.source === "download") toast(`The download of "${t.title}" won't play, so it's streaming instead.`);
+      if (get().source?.source === "download") useLibrary.getState().redownload(t);
       startOnline(get().index, at);
       return;
     }
@@ -205,6 +220,7 @@ export const usePlayer = create<PlayerState>((set, get) => {
 
   audio.addEventListener("playing", () => {
     setAnchor(true);
+    lastSeenAt = performance.now();
     set({ playing: true, loading: false });
   });
   audio.addEventListener("pause", () => {
@@ -221,9 +237,9 @@ export const usePlayer = create<PlayerState>((set, get) => {
   audio.addEventListener("ended", () => {
     const t = get().current();
     const expected = expectedPosition();
-    api.log(`ended "${t?.title}" at ${audio.currentTime.toFixed(1)} of ${audio.duration.toFixed(1)} s (by the clock ${expected.toFixed(1)} s)`);
-    // The player jumped to the end: the stream broke, the song didn't finish.
-    if (t && Number.isFinite(audio.duration) && audio.duration - expected > 5) return recover(t, expected, "ended early");
+    api.log(`ended "${t?.title}" at ${audio.currentTime.toFixed(1)} of ${audio.duration.toFixed(1)} s (by the clock ${expected.toFixed(1)} s, played to ${reached.toFixed(1)} s)`);
+    // The player jumped to the end: the stream or file broke, the song didn't finish.
+    if (t && Number.isFinite(audio.duration) && audio.duration - Math.min(expected, reached) > 5) return recover(t, Math.min(expected, reached), "ended early");
     advance(true);
   });
   audio.addEventListener("error", () => {
@@ -237,6 +253,12 @@ export const usePlayer = create<PlayerState>((set, get) => {
   let lastPrefetch = "";
   audio.addEventListener("timeupdate", () => {
     set({ position: audio.currentTime });
+    // Real playback moves no faster than the clock (updates can be slow when the window is hidden).
+    const now = performance.now();
+    const step = audio.currentTime - lastSeen;
+    if (step >= 0 && step < 2 + (now - lastSeenAt) / 1000) reached = Math.max(reached, audio.currentTime);
+    lastSeen = audio.currentTime;
+    lastSeenAt = now;
     // Look up the next song as soon as this one is playing, so Next is instant.
     const { queue, index } = get();
     const next = queue[index + 1];
@@ -340,14 +362,14 @@ export const usePlayer = create<PlayerState>((set, get) => {
 
     previous() {
       if (audio.currentTime > 4 || get().index === 0) {
-        audio.currentTime = 0;
+        seekTo(0);
         return;
       }
       start(get().index - 1);
     },
 
     seek(sec) {
-      if (Number.isFinite(sec)) audio.currentTime = sec;
+      if (Number.isFinite(sec)) seekTo(sec);
       set({ position: sec });
     },
 
