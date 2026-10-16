@@ -28,12 +28,13 @@ export type Library = {
   playlists: Playlist[];
   history: { track: Track; at: number }[];
   downloads: Record<string, { track: Track; at: number; size: number }>;
-  settings: { autoplay: boolean; volume: number; hiddenYouTube?: string[]; lyricsServer?: string };
+  settings: { autoplay: boolean; volume: number; hiddenYouTube?: string[]; lyricsServer?: string; /** Played songs kept on this PC, in MB (0: off). */ cacheLimitMb?: number };
 };
 export type LyricLine = { time: number | null; end?: number; text: string; words?: { text: string; time: number; end: number }[]; part?: number };
 /** Lyrics as the engine gives them: lines (timed, maybe word by word) in sections such as Verse 1 or Chorus. */
 export type Lyrics = { synced: boolean; wordSynced?: boolean; source?: string; lines: LyricLine[]; parts?: { name: string | null }[] } | null;
-export type Resolved = { source: "jiosaavn" | "youtube" | "download"; codec: string; kbps?: number | null; /** The download was damaged and is gone. */ redownload?: boolean };
+export type CacheUsage = { bytes: number; songs: number; limitMb: number };
+export type Resolved = { source: "jiosaavn" | "youtube" | "download" | "cache"; codec: string; kbps?: number | null; /** The download was damaged and is gone. */ redownload?: boolean };
 export type DownloadState = Record<string, { state: "running" | "done" | "failed"; progress: number; error?: string }>;
 
 export type SpotifyImport =
@@ -130,6 +131,10 @@ export const api = {
   prefetch: (t: Track) => call<{ ready: boolean }>("POST", "/api/prefetch", { track: slim(t) }),
   library: () => call<Library>("GET", "/api/library"),
   like: (t: Track, liked: boolean) => call<Library>("POST", "/api/like", { track: slim(t), liked }),
+  /** The song really played: keep it on this PC for next time and offline. */
+  cacheSong: (t: Track) => call<{ ok: true }>("POST", "/api/cache", { track: slim(t) }),
+  cache: () => call<CacheUsage>("GET", "/api/cache"),
+  clearCache: () => call<CacheUsage>("DELETE", "/api/cache"),
   recordPlay: (t: Track) => call<{ ok: true }>("POST", "/api/history", { track: slim(t) }),
   createPlaylist: (name: string, tracks: Track[] = []) => call<{ created: Playlist; library: Library }>("POST", "/api/playlists", { name, tracks: tracks.map(slim) }),
   renamePlaylist: (id: string, name: string) => call<Library>("PATCH", `/api/playlists/${id}`, { name }),

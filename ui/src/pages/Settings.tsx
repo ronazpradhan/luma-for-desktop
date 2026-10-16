@@ -130,7 +130,7 @@ export function Settings() {
 
       <SpotifySection />
 
-      <LyricsSection />
+      <CacheSection />
       <AppSection />
       <section className="settings-group">
         <h2>About</h2>
@@ -199,32 +199,58 @@ function AppSection() {
   );
 }
 
-/** Where lyrics come from, and an optional LyricsPlus server of your own. */
-function LyricsSection() {
-  const saved = useLibrary((s) => s.settings.lyricsServer ?? "");
-  const [value, setValue] = useState(saved);
-  const [problem, setProblem] = useState<string | null>(null);
-  useEffect(() => setValue(saved), [saved]);
+/** Slider stops, in MB. */
+const CACHE_STOPS = [0, 256, 512, 1024, 2048, 5120, 10240, 20480];
+const sizeLabel = (mb: number) => (mb === 0 ? "Off" : mb < 1024 ? `${mb} MB` : `${mb / 1024} GB`);
+const bytesLabel = (b: number) => (b < 1024 ** 3 ? `${Math.round(b / 1024 ** 2)} MB` : `${(b / 1024 ** 3).toFixed(1)} GB`);
 
-  async function save() {
-    setProblem(null);
-    try {
-      useLibrary.setState({ settings: await api.settings({ lyricsServer: value.trim() }) });
-      toast(value.trim() ? "LUMA will ask your LyricsPlus server first" : "Using the public LyricsPlus servers");
-    } catch (e) {
-      setProblem((e as Error).message);
-    }
+/** Songs you've played, kept on this PC so they play offline: how much room they get. */
+function CacheSection() {
+  const saved = useLibrary((s) => s.settings.cacheLimitMb ?? 1024);
+  const [stop, setStop] = useState(() => nearestStop(saved));
+  const usage = useAsync(() => api.cache(), [saved]);
+  useEffect(() => setStop(nearestStop(saved)), [saved]);
+
+  async function commit(i: number) {
+    const mb = CACHE_STOPS[i];
+    if (mb === saved) return;
+    useLibrary.setState({ settings: await api.settings({ cacheLimitMb: mb }) });
   }
 
+  async function clear() {
+    await api.clearCache();
+    usage.reload();
+    toast("Cleared played songs");
+  }
+
+  const u = usage.data;
   return (
     <section className="settings-group">
-      <h2>Lyrics</h2>
-      <p>From LyricsPlus, Unison, SimpMusic, LRCLIB and KuGou.</p>
-      <form className="actions compact" onSubmit={(e) => { e.preventDefault(); save(); }}>
-        <input className="paste" placeholder="Own LyricsPlus server (optional)" value={value} onChange={(e) => setValue(e.target.value)} spellCheck={false} aria-label="LyricsPlus server" />
-        <button className="btn" type="submit" disabled={value.trim() === saved}>Save</button>
-      </form>
-      {problem && <p className="problem">{problem}</p>}
+      <div className="account-row">
+        <span>
+          <h2>Offline cache</h2>
+          <p>Songs you play are saved so they work offline.</p>
+        </span>
+        <button className="btn btn-quiet" disabled={!u?.songs} onClick={clear}>Clear</button>
+      </div>
+      <label className="cache-slider">
+        <input
+          className="range" type="range" min={0} max={CACHE_STOPS.length - 1} step={1} value={stop}
+          aria-label="Cache size" aria-valuetext={sizeLabel(CACHE_STOPS[stop])}
+          style={{ "--fill": `${(stop / (CACHE_STOPS.length - 1)) * 100}%` } as React.CSSProperties}
+          onChange={(e) => setStop(Number(e.target.value))}
+          onPointerUp={(e) => commit(Number((e.target as HTMLInputElement).value))}
+          onKeyUp={(e) => commit(Number((e.target as HTMLInputElement).value))}
+        />
+        <b>{sizeLabel(CACHE_STOPS[stop])}</b>
+      </label>
+      {u && <p className="muted small">{u.songs ? `${u.songs} ${u.songs === 1 ? "song" : "songs"} · ${bytesLabel(u.bytes)}` : "Nothing saved yet"}</p>}
     </section>
   );
+}
+
+function nearestStop(mb: number) {
+  let best = 0;
+  CACHE_STOPS.forEach((v, i) => { if (Math.abs(v - mb) < Math.abs(CACHE_STOPS[best] - mb)) best = i; });
+  return best;
 }

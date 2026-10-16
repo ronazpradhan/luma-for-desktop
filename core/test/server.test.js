@@ -121,3 +121,14 @@ test("a damaged download is dropped instead of played", async () => {
     await rm(d, { recursive: true, force: true });
   }
 });
+
+test("the cache size is a setting, and turning it off empties it", async () => {
+  const h = { "x-luma-key": key, "Content-Type": "application/json" };
+  let usage = await (await fetch(`${base}/api/cache`, { headers: h })).json();
+  assert.equal(usage.limitMb, 1024);
+  const saved = await (await fetch(`${base}/api/settings`, { method: "PATCH", headers: h, body: JSON.stringify({ cacheLimitMb: 99_999_999 }) })).json();
+  assert.equal(saved.cacheLimitMb, 20 * 1024);
+  await fetch(`${base}/api/settings`, { method: "PATCH", headers: h, body: JSON.stringify({ cacheLimitMb: 0 }) });
+  usage = await (await fetch(`${base}/api/cache`, { headers: h })).json();
+  assert.deepEqual(usage, { bytes: 0, songs: 0, limitMb: 0 });
+});

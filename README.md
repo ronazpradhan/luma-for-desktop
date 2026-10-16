@@ -32,6 +32,7 @@ Windows 10 or 11 (64-bit). Updates install automatically.
 - 🎧 **Plays almost anything** in about a second.
 - 🎤 **Live lyrics**, word by word, grouped into verses and choruses.
 - ⬇️ **Downloads** to `Music\LUMA` for offline listening.
+- 💾 **Offline cache:** songs you play stay on your PC, up to a size you pick in Settings.
 - ✨ **Quick picks and new releases** from what you actually play.
 - 🔁 **Autoplay** with the next songs visible in the queue.
 - 📥 **Import** your Spotify and YouTube Music playlists.

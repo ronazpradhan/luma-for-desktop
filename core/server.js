@@ -15,6 +15,7 @@ import { createYtJs } from "./ytjs.js";
 import { cleanSpDc, createSpotify, spDcFromJar } from "./spotify.js";
 import { bestMatch } from "./match.js";
 import { createLyrics } from "./lyrics.js";
+import { openCache } from "./cache.js";
 import { artistScores, mixQuickPicks, pickReleases, pickSeeds, songScores } from "./taste.js";
 import { createResolver } from "./resolver.js";
 import { createSaavn } from "./saavn.js";
@@ -42,6 +43,9 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
   if (!key || key.length < 32) throw new Error("LUMA needs a long random key");
   const keyBuf = Buffer.from(key);
   const store = await openStore(dataDir);
+  const cacheLimit = () => cacheLimitMb(store.snapshot().settings) * 1024 * 1024;
+  const cache = await openCache({ dir: path.join(dataDir, "cache"), limit: cacheLimit, log });
+  cache.check().then(() => cache.trim()).catch(() => {});
 
   const saavn = createSaavn();
   const ytdlp = createYtDlp({ binDir: path.join(dataDir, "bin"), log });
@@ -296,7 +300,7 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
   // ---- audio ------------------------------------------------------------
 
   async function streamTo(req, res, id, online = false) {
-    const local = online ? null : store.download(id);
+    const local = online ? null : store.download(id) ?? cache.get(id);
     if (local && (await stat(local.path).catch(() => null))) return sendFile(req, res, local.path, local.type);
     let stream = resolver.cached(id);
     if (!stream) throw new HttpError(409, "resolve this song first");
@@ -383,39 +387,65 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
     downloads.delete(id);
   }
 
+  /** [t]'s whole audio file, checked: { data, ext, type }. Throws when any of it is missing. */
+  async function fetchWhole(t, onProgress = () => {}) {
+    const stream = await resolver.resolve(t);
+    const ext = stream.source === "jiosaavn" ? "m4a" : stream.codec === "opus" ? "webm" : "m4a";
+    const type = ext === "m4a" ? "audio/mp4" : "audio/webm";
+    // Fetched in pieces: YouTube slows one long request to a crawl.
+    const chunks = [];
+    let got = 0;
+    let total = stream.size ?? null;
+    const STEP = 4 * 1024 * 1024;
+    for (;;) {
+      const up = await fetch(stream.url, { headers: { "User-Agent": stream.userAgent ?? "Mozilla/5.0", Range: `bytes=${got}-${got + STEP - 1}` }, signal: AbortSignal.timeout(60_000) });
+      if (up.status !== 206 && up.status !== 200) throw new Error(`download answered ${up.status}`);
+      const buf = Buffer.from(await up.arrayBuffer());
+      chunks.push(buf);
+      got += buf.length;
+      const range = up.headers.get("content-range");
+      if (range) total = Number(range.split("/")[1]) || total;
+      onProgress(total ? got / total : 0);
+      if (up.status === 200 || !buf.length || (total && got >= total)) break;
+    }
+    // A cut-off download plays as a song that ends the moment it starts.
+    if (total && got < total) throw new Error(`incomplete: ${got} of ${total} bytes`);
+    const whole = Buffer.concat(chunks);
+    if (!looksLikeAudio(whole)) throw new Error("not an audio file");
+    if (t.duration && got < t.duration * MIN_BYTES_PER_SECOND) throw new Error(`only ${got} bytes for ${Math.round(t.duration)} s`);
+    return { data: whole, ext, type };
+  }
+
+  // Songs being saved to the cache, one at a time behind the music.
+  const caching = new Set();
+  let cacheChain = Promise.resolve();
+  function cacheSong(t) {
+    if (!cacheLimit() || cache.has(t.id) || store.download(t.id) || caching.has(t.id)) return;
+    caching.add(t.id);
+    cacheChain = cacheChain.then(async () => {
+      try {
+        const { data, ext, type } = await fetchWhole(t);
+        await cache.add(t.id, data, ext, type, t);
+      } catch (e) {
+        log(`not cached: "${t.title}" (${t.id}): ${e.message}`);
+      } finally {
+        caching.delete(t.id);
+      }
+    });
+  }
+
   async function download(t) {
     if (downloads.get(t.id)?.state === "running") return;
     downloads.set(t.id, { state: "running", progress: 0 });
     try {
-      const stream = await resolver.resolve(t);
-      const ext = stream.source === "jiosaavn" ? "m4a" : stream.codec === "opus" ? "webm" : "m4a";
-      const type = ext === "m4a" ? "audio/mp4" : "audio/webm";
+      const { data, ext, type } = await fetchWhole(t, (progress) => downloads.set(t.id, { state: "running", progress }));
       await mkdir(musicDir, { recursive: true });
       const file = path.join(musicDir, `${safeName(`${t.artist} - ${t.title}`)}.${ext}`);
-      // Fetched in pieces: YouTube slows one long request to a crawl.
-      const chunks = [];
-      let got = 0;
-      let total = stream.size ?? null;
-      const STEP = 4 * 1024 * 1024;
-      for (;;) {
-        const up = await fetch(stream.url, { headers: { "User-Agent": stream.userAgent ?? "Mozilla/5.0", Range: `bytes=${got}-${got + STEP - 1}` }, signal: AbortSignal.timeout(60_000) });
-        if (up.status !== 206 && up.status !== 200) throw new Error(`download answered ${up.status}`);
-        const buf = Buffer.from(await up.arrayBuffer());
-        chunks.push(buf);
-        got += buf.length;
-        const range = up.headers.get("content-range");
-        if (range) total = Number(range.split("/")[1]) || total;
-        downloads.set(t.id, { state: "running", progress: total ? got / total : 0 });
-        if (up.status === 200 || !buf.length || (total && got >= total)) break;
-      }
-      // A cut-off download plays as a song that ends the moment it starts.
-      if (total && got < total) throw new Error(`incomplete: ${got} of ${total} bytes`);
-      const whole = Buffer.concat(chunks);
-      if (!looksLikeAudio(whole)) throw new Error("not an audio file");
-      if (t.duration && got < t.duration * MIN_BYTES_PER_SECOND) throw new Error(`only ${got} bytes for ${Math.round(t.duration)} s`);
-      await writeFile(file, whole);
-      store.setDownload(t.id, { path: file, type, size: got, track: t, at: Date.now() });
+      await writeFile(file, data);
+      store.setDownload(t.id, { path: file, type, size: data.length, track: t, at: Date.now() });
       downloads.set(t.id, { state: "done", progress: 1 });
+      // Downloaded: the cached copy is no longer needed.
+      cache.drop(t.id).catch(() => {});
     } catch (e) {
       log(`download failed for ${t.id}: ${e.message}`);
       downloads.set(t.id, { state: "failed", progress: 0, error: e.message });
@@ -550,6 +580,14 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
           await forgetDownload(t.id);
           redownload = true;
         }
+        // Played before: from the cache, at once and offline. A retry never uses it.
+        const kept = b.online ? null : cache.get(t.id);
+        if (kept) {
+          const why = await damaged(kept, t);
+          if (!why) return send(res, 200, { source: "cache", codec: kept.type === "audio/webm" ? "opus" : "aac" });
+          log(`cached copy of "${t.title}" (${t.id}) is damaged (${why}); streaming it`);
+        }
+        if (kept || b.retry) await cache.drop(t.id);
         const s = await (b.retry ? resolver.retry(t) : resolver.resolve(t)).catch((e) => {
           log(`could not play "${t.title}" (${t.id}): ${e.code ?? ""} ${e.message}`);
           const err = new HttpError(502, e.code ? e.message : `Couldn't find this song (${e.message})`);
@@ -614,6 +652,15 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
         download(t);
         return send(res, 202, { ok: true });
       }
+      case "POST cache":
+        // The song really played (not a stream that broke): keep it for next time.
+        cacheSong(track((await body(req)).track));
+        return send(res, 202, { ok: true });
+      case "GET cache":
+        return send(res, 200, { ...cache.usage(), limitMb: cacheLimitMb(store.snapshot().settings) });
+      case "DELETE cache":
+        await cache.clear();
+        return send(res, 200, { ...cache.usage(), limitMb: cacheLimitMb(store.snapshot().settings) });
       case "GET downloads":
         return send(res, 200, Object.fromEntries(downloads));
       case "DELETE download": {
@@ -624,6 +671,7 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
         const b = await body(req);
         const patch = {};
         if (typeof b.autoplay === "boolean") patch.autoplay = b.autoplay;
+        if (Number.isFinite(b.cacheLimitMb)) patch.cacheLimitMb = Math.round(Math.min(MAX_CACHE_MB, Math.max(0, b.cacheLimitMb)));
         if (Number.isFinite(b.volume)) patch.volume = Math.min(1, Math.max(0, b.volume));
         // A LyricsPlus server of the listener's own (empty: YouLy+'s public ones).
         if (typeof b.lyricsServer === "string") {
@@ -633,7 +681,9 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
         }
         // YouTube Music playlists the listener removed from LUMA (their account is untouched).
         if (Array.isArray(b.hiddenYouTube)) patch.hiddenYouTube = [...new Set(b.hiddenYouTube.filter((x) => typeof x === "string" && /^[\w-]{1,80}$/.test(x)))].slice(0, 500);
-        return send(res, 200, store.setSettings(patch));
+        const saved = store.setSettings(patch);
+        if ("cacheLimitMb" in patch) await (patch.cacheLimitMb ? cache.trim() : cache.clear());
+        return send(res, 200, saved);
       }
       default:
         throw new HttpError(404, "not found");
@@ -766,6 +816,11 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
  * server resized to 544 px, a YouTube video's largest thumbnail, JioSaavn's
  * 500 px file. Anything else is left as it is.
  */
+const DEFAULT_CACHE_MB = 1024;
+const MAX_CACHE_MB = 20 * 1024;
+/** How much of the disk played songs may take, in MB (0: none are kept). */
+export const cacheLimitMb = (settings) => (Number.isFinite(settings?.cacheLimitMb) ? settings.cacheLimitMb : DEFAULT_CACHE_MB);
+
 /** WebM (EBML) or MP4 (`ftyp` box): what downloads are saved as. */
 export function looksLikeAudio(head) {
   if (!head || head.length < 12) return false;

@@ -70,6 +70,9 @@ const setAnchor = (running: boolean) => { anchor = { pos: audio.currentTime, at:
  * start the player at the very end, which the clock above can't tell apart.
  */
 let reached = 0;
+/** The song start ([loadToken]) and song last sent to the cache. */
+let cachedFor = -1;
+let cachedId = "";
 let lastSeen = 0;
 let lastSeenAt = 0;
 const seekTo = (sec: number) => { reached = lastSeen = sec; lastSeenAt = performance.now(); audio.currentTime = sec; };
@@ -270,6 +273,14 @@ export const usePlayer = create<PlayerState>((set, get) => {
     if (step >= 0 && step < 2 + (now - lastSeenAt) / 1000) reached = Math.max(reached, audio.currentTime);
     lastSeen = audio.currentTime;
     lastSeenAt = now;
+    // Half a minute of real playing (or most of a short song): keep it for offline.
+    const cur = get().current();
+    const src = get().source?.source;
+    if (cur && cachedFor !== loadToken && cachedId !== cur.id && src && src !== "download" && src !== "cache" && reached >= Math.min(30, (audio.duration || 60) * 0.8)) {
+      cachedFor = loadToken;
+      cachedId = cur.id;
+      api.cacheSong(cur).catch(() => {});
+    }
     // Look up the next song as soon as this one is playing, so Next is instant.
     const { queue, index } = get();
     const next = queue[index + 1];
