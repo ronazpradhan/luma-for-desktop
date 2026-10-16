@@ -164,7 +164,11 @@ h1, h2, h3, p { margin: 0; }
 .side-row:hover { background: var(--hover); }
 .side-row.is-active { background: var(--press); }
 .side-icon { width: 36px; height: 36px; flex: none; border-radius: 8px; display: grid; place-items: center; background: rgb(255 255 255 / 0.07); color: var(--haze); }
-.side-icon.liked { background: linear-gradient(135deg, color-mix(in srgb, var(--glow) 80%, white 10%), color-mix(in srgb, var(--glow) 40%, black)); color: var(--moon); }
+.side-icon.liked { background: linear-gradient(135deg, #8b5cf6, #ec4899 55%, #f59e0b); color: #fff; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25); }
+.side-icon.downloads { background: linear-gradient(135deg, #14b8a6, #2563eb); color: #fff; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25); }
+.side-icon.cover-blank { background: linear-gradient(135deg, hsl(var(--h) 70% 52%), hsl(calc(var(--h) + 40) 65% 32%)); color: rgb(255 255 255 / 0.9); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.2); }
+.cover-mosaic { flex: none; display: grid; grid-template-columns: 1fr 1fr; border-radius: 8px; overflow: hidden; }
+.cover-mosaic .art { width: 100%; height: 100%; border-radius: 0; }
 .side-text { display: grid; min-width: 0; }
 .side-text b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .side-text small { color: var(--haze); font-size: 12px; }
@@ -391,7 +395,7 @@ h1, h2, h3, p { margin: 0; }
 .account { display: flex; align-items: center; gap: 12px; margin: 4px 0 2px; }
 .account > span { display: grid; }
 .account small { color: var(--haze); font-size: 13px; }
-.side-icon.yt { background: linear-gradient(135deg, #ff4e45, #a1132c); color: #fff; }
+.side-icon.yt { background: linear-gradient(135deg, #ff4e45, #a1132c); color: #fff; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25); }
 .side-icon.spotify { background: #1ed760; color: #0b0b0b; font-weight: 800; }
 .paste { flex: 1; min-width: 0; height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid rgb(255 255 255 / 0.14); background: rgb(255 255 255 / 0.06); outline: 0; }
 .paste:focus { border-color: color-mix(in srgb, var(--accent) 60%, transparent); }

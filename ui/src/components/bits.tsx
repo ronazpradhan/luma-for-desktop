@@ -122,3 +122,26 @@ export function DownloadedBadge({ size = 18, label = "Downloaded" }: { size?: nu
     </svg>
   );
 }
+
+/**
+ * A playlist's cover: its own art; else a 2×2 of its songs' covers; else a
+ * colourful tile (its colour from its name) with a music note.
+ */
+export function PlaylistCover({ art, tracks = [], name, size = 36 }: { art?: string | null; tracks?: { art?: string | null }[]; name: string; size?: number }) {
+  const arts = [...new Set(tracks.map((t) => t.art).filter(Boolean))].slice(0, 4) as string[];
+  if (arts.length >= 4) {
+    return (
+      <span className="cover-mosaic" style={{ width: size, height: size }} aria-hidden>
+        {arts.map((a) => <Art key={a} src={a} />)}
+      </span>
+    );
+  }
+  if (art || arts[0]) return <Art src={art || arts[0]} size={size} />;
+  let h = 0;
+  for (const c of name) h = (h * 31 + c.charCodeAt(0)) % 360;
+  return (
+    <span className="side-icon cover-blank" style={{ width: size, height: size, ["--h" as string]: h }} aria-hidden>
+      <svg width={size * 0.45} height={size * 0.45} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>
+    </span>
+  );
+}

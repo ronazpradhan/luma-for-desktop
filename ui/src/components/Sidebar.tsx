@@ -3,7 +3,7 @@ import { installUpdate, useUpdate } from "../update";
 import { dismissToast, useToast } from "../toast";
 import { useLibrary } from "../library";
 import { useNav, type Route } from "../nav";
-import { Art } from "./bits";
+import { PlaylistCover } from "./bits";
 import { deletePlaylistAsk, hideYouTubeAsk, openPlaylistMenu } from "./PlaylistMenu";
 
 export function Sidebar() {
@@ -45,11 +45,11 @@ export function Sidebar() {
         </div>
         <div className="side-list">
           <button className={`side-row ${route.name === "liked" ? "is-active" : ""}`} onClick={() => go({ name: "liked" })} onContextMenu={openPlaylistMenu({ kind: "liked" })} title="Liked songs" aria-current={route.name === "liked" ? "page" : undefined}>
-            <span className="side-icon liked"><Heart size={15} fill="currentColor" /></span>
+            <span className="side-icon liked"><Heart size={16} fill="currentColor" /></span>
             <span className="side-text"><b>Liked songs</b><small>{likes} {likes === 1 ? "song" : "songs"}</small></span>
           </button>
           <button className={`side-row ${route.name === "downloads" ? "is-active" : ""}`} onClick={() => go({ name: "downloads" })} onContextMenu={openPlaylistMenu({ kind: "downloads" })} title="Downloads" aria-current={route.name === "downloads" ? "page" : undefined}>
-            <span className="side-icon"><Download size={15} /></span>
+            <span className="side-icon downloads"><Download size={16} strokeWidth={2.4} /></span>
             <span className="side-text"><b>Downloads</b><small>On this PC</small></span>
           </button>
           {ytPlaylists.map((p) => (
@@ -57,7 +57,7 @@ export function Sidebar() {
               aria-current={route.name === "ytplaylist" && route.id === p.id ? "page" : undefined}
               onContextMenu={openPlaylistMenu({ kind: "youtube", id: p.id, title: p.title })}
               onKeyDown={(e) => { if (e.key === "Delete") { e.preventDefault(); hideYouTubeAsk(p.id); } }}>
-              {p.id === "LM" ? <span className="side-icon yt"><Heart size={15} fill="currentColor" /></span> : <Art src={p.art} size={36} />}
+              {p.id === "LM" ? <span className="side-icon yt"><Heart size={15} fill="currentColor" /></span> : <PlaylistCover art={p.art} name={p.title} />}
               <span className="side-text"><b>{p.title}</b><small>YouTube Music</small></span>
             </button>
           ))}
@@ -66,7 +66,7 @@ export function Sidebar() {
               aria-current={route.name === "playlist" && route.id === p.id ? "page" : undefined}
               onContextMenu={openPlaylistMenu({ kind: "playlist", id: p.id })}
               onKeyDown={(e) => { if (e.key === "Delete") { e.preventDefault(); deletePlaylistAsk(p); } }}>
-              <Art src={p.art} size={36} />
+              <PlaylistCover art={p.art} tracks={p.tracks} name={p.name} />
               <span className="side-text"><b>{p.name}</b><small>{p.tracks.length} {p.tracks.length === 1 ? "song" : "songs"}</small></span>
             </button>
           ))}

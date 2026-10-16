@@ -300,7 +300,9 @@ function parseBrowseRow(item) {
  */
 export function libraryTiles(parsed) {
   const seen = new Set();
-  const tiles = parsed.filter((t) => t?.kind === "playlist" && t.id !== "LL" && !/^liked videos$/i.test(t.title) && !seen.has(t.id) && seen.add(t.id));
+  // "Liked songs", "Your likes" and the like are copies of Liked music (made by transfer tools): only LM stays.
+  const copy = (t) => t.id !== "LM" && (t.id === "LL" || /^(your )?(liked (songs|music|videos)|likes)$/i.test(t.title.trim()));
+  const tiles = parsed.filter((t) => t?.kind === "playlist" && !copy(t) && !seen.has(t.id) && seen.add(t.id));
   const liked = tiles.find((t) => t.id === "LM") ?? { kind: "playlist", id: "LM", title: "Liked music", subtitle: "Auto playlist", art: null };
   return [liked, ...tiles.filter((t) => t.id !== "LM")];
 }
