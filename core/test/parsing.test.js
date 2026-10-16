@@ -53,3 +53,10 @@ test("album rows take the album's artist, not the play count", () => {
   assert.equal(t.artist, "Taylor Swift");
   assert.equal(t.duration, 227);
 });
+
+test("YouTube library: one Liked music, no Liked videos, no repeats", async () => {
+  const { libraryTiles } = await import("../ytmusic.js");
+  const pl = (id, title) => ({ kind: "playlist", id, title, subtitle: "", art: null });
+  const out = libraryTiles([pl("LL", "Liked videos"), pl("LM", "Liked music"), pl("PL1", "Mine"), pl("PL1", "Mine"), { kind: "album", id: "MPRE1", title: "x" }]);
+  assert.deepEqual(out.map((t) => t.id), ["LM", "PL1"]);
+});

@@ -78,9 +78,7 @@ export function createYtMusic({ fetchImpl = fetch, hl = "en", gl = "US", auth = 
     async libraryPlaylists() {
       const json = await call("browse", { browseId: "FEmusic_liked_playlists" }, "", { signed: "required" });
       const grid = findKey(json, "gridRenderer");
-      const tiles = (grid?.items ?? []).map(parseTile).filter((t) => t?.kind === "playlist");
-      const liked = tiles.find((t) => t.id === "LM") ?? { kind: "playlist", id: "LM", title: "Liked music", subtitle: "Auto playlist", art: null };
-      return [liked, ...tiles.filter((t) => t.id !== "LM")];
+      return libraryTiles((grid?.items ?? []).map(parseTile));
     },
 
     async search(query) {
@@ -296,6 +294,17 @@ function parseBrowseRow(item) {
 }
 
 /** A tile in a carousel: an album, a playlist, an artist, or a song. */
+/**
+ * Your YouTube Music playlists, Liked music first. YouTube's "Liked videos"
+ * (LL) is left out: it repeats Liked music with videos mixed in. Repeats go.
+ */
+export function libraryTiles(parsed) {
+  const seen = new Set();
+  const tiles = parsed.filter((t) => t?.kind === "playlist" && t.id !== "LL" && !/^liked videos$/i.test(t.title) && !seen.has(t.id) && seen.add(t.id));
+  const liked = tiles.find((t) => t.id === "LM") ?? { kind: "playlist", id: "LM", title: "Liked music", subtitle: "Auto playlist", art: null };
+  return [liked, ...tiles.filter((t) => t.id !== "LM")];
+}
+
 function parseTile(item) {
   if (item.musicResponsiveListItemRenderer) return parseSongRow(item);
   const r = item.musicTwoRowItemRenderer;
