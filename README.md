@@ -2,14 +2,14 @@
 
 <h1 align="center">🌙 LUMA for Windows</h1>
 
-<p align="center">A free, ad-free music player for your PC. Search almost any song, play it in seconds, download it for offline listening, and sing along with live lyrics.</p>
-
-<p align="center"><sub>Made by <a href="https://github.com/ronazpradhan"><b>Ronaz Pradhan</b></a> · Using this code? <a href="#-using-lumas-code-credit-is-required">Credit is required</a></sub></p>
+<p align="center">Free, ad-free music player. Almost any song, offline downloads, live lyrics.</p>
 
 <p align="center">
-  <a href="https://github.com/ronazpradhan/luma-for-desktop/releases/latest/download/LUMA-Setup.exe"><b>⬇ Download LUMA for Windows</b></a>
+  <a href="https://github.com/ronazpradhan/luma-for-desktop/releases/latest/download/LUMA-Setup.exe"><b>⬇ Download</b></a>
   &nbsp;·&nbsp;
-  <a href="https://github.com/ronazpradhan/luma-for-desktop/releases">All releases</a>
+  <a href="https://github.com/ronazpradhan/luma-for-desktop/releases">Releases</a>
+  &nbsp;·&nbsp;
+  <a href="https://github.com/ronazpradhan/luma-for-desktop/issues">Report a bug</a>
 </p>
 
 <p align="center">
@@ -19,111 +19,53 @@
   <a href="LICENSE"><img alt="GPL-3.0" src="https://img.shields.io/badge/license-GPL--3.0-8b7cf6"></a>
 </p>
 
----
-
 ## Install
 
-1. **[Download `LUMA-Setup.exe`](https://github.com/ronazpradhan/luma-for-desktop/releases/latest/download/LUMA-Setup.exe)** (always the newest version).
-2. Open it. If Windows shows **"Windows protected your PC"**, click **More info**, then **Run anyway**. That warning appears because the installer isn't code-signed, not because something is wrong with it.
-3. Follow the setup:
-   - **Who it's for:** just you, or everyone who uses this PC.
-   - **Where to put it:** keep the suggested folder, or click **Browse** to choose another.
-   - **Install**, then leave **Run LUMA** ticked and click **Finish**.
+1. [Download `LUMA-Setup.exe`](https://github.com/ronazpradhan/luma-for-desktop/releases/latest/download/LUMA-Setup.exe) and open it.
+2. If Windows says *"Windows protected your PC"*: **More info → Run anyway** (the installer isn't code-signed).
+3. Pick a folder, **Install**, **Finish**.
 
-LUMA gets a desktop shortcut and a Start menu entry. No account, no sign-up.
+Windows 10 or 11 (64-bit). Updates install automatically.
 
-**Needs:** Windows 10 or 11, 64-bit, and an internet connection (downloaded songs play offline).
+## Features
 
-## Updates are automatic
+- 🎧 **Plays almost anything** in about a second.
+- 🎤 **Live lyrics**, word by word, grouped into verses and choruses.
+- ⬇️ **Downloads** to `Music\LUMA` for offline listening.
+- ✨ **Quick picks and new releases** from what you actually play.
+- 🔁 **Autoplay** with the next songs visible in the queue.
+- 📥 **Import** your Spotify and YouTube Music playlists.
+- 🔒 **Private:** no account, no tracking. Everything stays on your PC.
 
-You install LUMA once. After that:
+**Shortcuts:** <kbd>Space</kbd> play/pause · <kbd>Ctrl</kbd>+<kbd>←</kbd>/<kbd>→</kbd> previous/next · <kbd>Ctrl</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd> volume · <kbd>Ctrl</kbd>+<kbd>K</kbd> search · <kbd>Ctrl</kbd>+<kbd>L</kbd> like
 
-- LUMA checks for a new version when it starts, then every few hours.
-- If there is one, it downloads quietly in the background while you listen.
-- When it's ready, a **Restart to update** button appears in the sidebar. Click it, or just keep listening: the update installs the next time you close LUMA.
+## Help
 
-You can see your version and check for updates yourself in **Settings → About**. Your liked songs, playlists and downloads stay as they are through every update.
+- **A song skips:** open `%APPDATA%\LUMA\luma.log` and send the last lines in an [issue](https://github.com/ronazpradhan/luma-for-desktop/issues/new).
+- **Uninstall:** Settings → Uninstall LUMA. Your downloads are kept.
 
-## What it does
-
-- **Plays almost anything, fast.** Each song is looked up on JioSaavn and YouTube at once and plays from whichever is ready first, usually in under a second.
-- **Live lyrics, grouped like a lyric sheet.** Verses, choruses and bridges are labelled and spaced apart, and lyrics light up word by word when the source times each word. Click a line to jump to it.
-- **Never runs out.** Autoplay lines up songs like the last one, and you can see them coming in the queue.
-- **A home that learns you.** Quick picks follow the vibe you're in, and New releases come from the artists you play most.
-- **Your library, on your PC.** Liked songs, your own playlists and your history are saved on this computer. Right-click any playlist to play, shuffle, rename or delete it.
-- **Downloads.** Save songs to `Music\LUMA` and play them without internet.
-- **Bring your music with you.**
-  - **Spotify:** import your Liked Songs and playlists (*Settings → Spotify*).
-  - **YouTube Music:** see your likes and playlists, and play songs that are hard to find elsewhere (*Settings → YouTube*).
-- **Feels at home on Windows.** Media keys and the Windows volume flyout control playback, and the window takes on the colours of the song that's playing.
-
-### Keyboard shortcuts
-
-| Keys | Does |
-|---|---|
-| <kbd>Space</kbd> | Play or pause |
-| <kbd>Ctrl</kbd> + <kbd>→</kbd> / <kbd>←</kbd> | Next / previous song |
-| <kbd>Ctrl</kbd> + <kbd>↑</kbd> / <kbd>↓</kbd> | Volume up / down |
-| <kbd>Ctrl</kbd> + <kbd>K</kbd> | Search |
-| <kbd>Ctrl</kbd> + <kbd>L</kbd> | Like the song that's playing |
-| <kbd>Delete</kbd> | Delete the selected playlist |
-
-## Private by design
-
-LUMA has no accounts, no servers of its own and no tracking. It runs a small engine on your own PC that only the LUMA window can talk to. If you connect YouTube or Spotify, only that sign-in is kept, encrypted with Windows' own protection, and LUMA never sees your password. LUMA never changes anything in your Spotify or YouTube account.
-
-## Something not working?
-
-- **A song keeps skipping:** LUMA writes what happened to each song in a log. Press <kbd>Win</kbd> + <kbd>R</kbd>, paste `%APPDATA%\LUMA`, and open `luma.log`. The last lines usually say why. Include them if you [report a problem](https://github.com/ronazpradhan/luma-for-desktop/issues/new).
-- **"Windows protected your PC" when installing:** choose **More info → Run anyway** (see [Install](#install)).
-- **No update showing up:** open **Settings → About → Check for updates**. Versions from before 0.6.0 can't update themselves, so download the newest installer once from the link above. It installs over your old version and keeps your library.
-- **Uninstalling:** in LUMA, open **Settings → LUMA on this PC → Uninstall LUMA**. You can also use Windows' **Settings → Apps → Installed apps → LUMA → Uninstall**. The uninstaller asks whether to delete your library (liked songs, playlists, history). Downloaded songs in `Music\LUMA` are always kept.
-
-[Report a bug or suggest something →](https://github.com/ronazpradhan/luma-for-desktop/issues)
-
----
-
-## For developers
+## Developers
 
 ```
 npm install
-npm run dev     # engine + UI with hot reload at http://localhost:5173
-npm run app     # the desktop app, built from source
-npm test        # engine tests
-npm run dist    # Windows installer in release/ (not published)
+npm run dev     # hot reload at http://localhost:5173
+npm test
+npm run dist    # installer in release/
 ```
 
-### Publishing a new version
+**Release:** bump `version` in `package.json`, commit, then push a matching tag (`git tag v1.2.3 && git push origin v1.2.3`). GitHub Actions builds and publishes it, and installed copies update themselves.
 
-Releases are built and published by GitHub Actions ([`.github/workflows/release.yml`](.github/workflows/release.yml)). Everyone's installed LUMA picks them up automatically.
+## 📜 Credit is required
 
-```
-npm version 0.6.1 --no-git-tag-version   # bump package.json
-git commit -am "LUMA for Windows 0.6.1: what changed"
-git tag v0.6.1
-git push && git push origin v0.6.1
-```
+LUMA is open source under [GPL-3.0](LICENSE) with [attribution terms](NOTICE). If you use its code:
 
-The tag must match the version in `package.json`. The workflow tests the app, builds `LUMA-Setup.exe`, and publishes a release with `latest.yml`, which is the file installed copies check for updates. To edit the release notes, open the release on GitHub after the workflow finishes.
+1. Show this in your app's About screen and README: **Based on [LUMA](https://github.com/ronazpradhan/luma-for-desktop) by Ronaz Pradhan**
+2. Keep the copyright line and the [`NOTICE`](NOTICE) file.
+3. Keep your version open source under GPL-3.0.
+4. Mark it as modified. Don't present it as the official LUMA.
 
-## 📜 Using LUMA's code? Credit is required
+## Thanks
 
-LUMA is free and open source under the [GPL-3.0](LICENSE), **with an attribution requirement** (GPL-3.0 section 7, written out in [`NOTICE`](NOTICE)). You're welcome to use, study, change and share it, as long as you do all of this:
+[Stash](https://github.com/rawnaldclark/Stash) · [Spotube](https://github.com/KRTirtho/spotube) · [YouTube.js](https://github.com/LuanRT/YouTube.js) · [yt-dlp](https://github.com/yt-dlp/yt-dlp) · Lyrics: [LyricsPlus](https://github.com/ibratabian17/lyricsplus), [Unison](https://github.com/better-lyrics/unison), [SimpMusic](https://github.com/maxrave-dev/SimpMusic), [LRCLIB](https://lrclib.net), KuGou
 
-1. **Credit Ronaz Pradhan where people can see it.** Put this in your app's About or credits screen, and in your README:
-
-   > Based on [LUMA](https://github.com/ronazpradhan/luma-for-desktop) by **Ronaz Pradhan**
-
-2. **Keep the copyright line and the [`NOTICE`](NOTICE) file** in your source code.
-3. **Keep it open source.** Your version stays under GPL-3.0, and anyone you give it to can get its source code.
-4. **Say it's modified.** Don't present your version as the official LUMA, or as made or endorsed by Ronaz Pradhan.
-
-Using LUMA's code without this credit breaks its licence. Questions, or want to do something the licence doesn't cover? [Open an issue](https://github.com/ronazpradhan/luma-for-desktop/issues).
-
-## 💜 Thanks
-
-LUMA for Android is a fork of [Stash](https://github.com/rawnaldclark/Stash) by rawnaldclark, and this app reuses its approach to matching songs on JioSaavn. Lyrics come from [LyricsPlus](https://github.com/ibratabian17/lyricsplus) (the backend of [YouLy+](https://github.com/ibratabian17/YouLyPlus)), [Unison](https://github.com/better-lyrics/unison) (from [Better Lyrics](https://github.com/better-lyrics/better-lyrics)), [SimpMusic Lyrics](https://github.com/maxrave-dev/SimpMusic), [LRCLIB](https://lrclib.net) and KuGou. Thanks to the people who run them; LUMA keeps lyrics on your PC after the first look-up so each song is asked for once, and you can point it at your own LyricsPlus server in Settings. YouTube playback works the way [Spotube](https://github.com/KRTirtho/spotube)'s YouTube plugin does, through [YouTube.js](https://github.com/LuanRT/YouTube.js), with [yt-dlp](https://github.com/yt-dlp/yt-dlp) as the last resort (downloaded on first use from its official releases and checked against their published checksums). Thanks to the Spotube, YouTube.js and yt-dlp teams.
-
----
-
-<p align="center">© 2026 Ronaz Pradhan · <a href="LICENSE">GPL-3.0</a> with <a href="NOTICE">attribution terms</a></p>
+<p align="center"><sub>© 2026 <a href="https://github.com/ronazpradhan">Ronaz Pradhan</a></sub></p>
