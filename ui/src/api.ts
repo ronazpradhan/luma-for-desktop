@@ -111,7 +111,8 @@ export const api = {
   spotifyImport: () => call<{ import: SpotifyImport }>("POST", "/api/spotify/import", {}),
   youtubeLibrary: () => call<{ playlists: Tile[] }>("GET", "/api/youtube/library"),
   home: () => call<{ shelves: Shelf[] }>("GET", "/api/home"),
-  forYou: () => call<{ basedOn: string | null; songs: Track[] }>("GET", "/api/foryou"),
+  /** Quick picks from your listening; [fresh] asks for a new mix now. */
+  forYou: (fresh = false) => call<{ basedOn: string | null; songs: Track[] }>("GET", `/api/foryou${fresh ? "?fresh=1" : ""}`),
   search: (q: string) => call<SearchResults>("GET", `/api/search?q=${encodeURIComponent(q)}`),
   suggest: (q: string) => call<string[]>("GET", `/api/suggest?q=${encodeURIComponent(q)}`),
   album: (id: string) => call<Album>("GET", `/api/album/${id}`),

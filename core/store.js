@@ -9,7 +9,8 @@ import path from "node:path";
 const HISTORY_CAP = 500;
 const FIELDS = ["id", "title", "artist", "artistId", "album", "albumId", "duration", "art"];
 
-const EMPTY = () => ({ version: 1, likes: [], playlists: [], history: [], downloads: {}, settings: { autoplay: true, volume: 0.8, hiddenYouTube: [] } });
+const EMPTY = () => ({ version: 1, likes: [], playlists: [], history: [], plays: {}, downloads: {}, settings: { autoplay: true, volume: 0.8, hiddenYouTube: [] } });
+const PLAYS_CAP = 3000;
 
 /** A track reduced to what the library keeps, or null if it isn't one. */
 export function cleanTrack(t) {
@@ -31,6 +32,10 @@ export async function openStore(dir) {
   let data;
   try {
     data = { ...EMPTY(), ...JSON.parse(await readFile(file, "utf8")) };
+    // Libraries from before play counts: start them from the history.
+    if (!Object.keys(data.plays ?? {}).length && data.history.length) {
+      data.plays = Object.fromEntries(data.history.map((h) => [h.track.id, { n: 1, last: h.at, track: h.track }]));
+    }
   } catch (e) {
     if (e.code !== "ENOENT") {
       // Unreadable: keep it aside rather than overwrite what might be recovered.
@@ -72,7 +77,16 @@ export async function openStore(dir) {
     },
 
     recordPlay(track) {
-      data.history = [{ track, at: Date.now() }, ...data.history.filter((h) => h.track.id !== track.id)].slice(0, HISTORY_CAP);
+      const now = Date.now();
+      data.history = [{ track, at: now }, ...data.history.filter((h) => h.track.id !== track.id)].slice(0, HISTORY_CAP);
+      // How often each song is played, for suggestions built from your taste.
+      data.plays ??= {};
+      const p = data.plays[track.id];
+      data.plays[track.id] = { n: (p?.n ?? 0) + 1, last: now, track };
+      const ids = Object.keys(data.plays);
+      if (ids.length > PLAYS_CAP) {
+        ids.sort((a, b) => data.plays[a].last - data.plays[b].last).slice(0, ids.length - PLAYS_CAP).forEach((id) => delete data.plays[id]);
+      }
       save();
     },
 

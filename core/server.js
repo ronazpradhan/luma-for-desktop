@@ -15,6 +15,7 @@ import { createYtJs } from "./ytjs.js";
 import { cleanSpDc, createSpotify, spDcFromJar } from "./spotify.js";
 import { bestMatch } from "./match.js";
 import { createLyrics } from "./lyrics.js";
+import { artistScores, mixQuickPicks, pickReleases, pickSeeds, songScores } from "./taste.js";
 import { createResolver } from "./resolver.js";
 import { createSaavn } from "./saavn.js";
 import { cleanTrack, openStore } from "./store.js";
@@ -198,27 +199,74 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
     };
   }
 
-  async function forYou() {
-    const recent = store.snapshot().history.slice(0, 15).map((h) => h.track);
-    if (!recent.length) {
+  // ---- suggestions from your listening (core/taste.js) ----------------------
+
+  const day = () => new Date().toISOString().slice(0, 10);
+  let picks = null; // { seed, at, data }
+
+  /** Quick picks: your most-played songs mixed with songs like them, new each day ([fresh]: new now). */
+  async function forYou(fresh = false) {
+    const d = store.snapshot();
+    const songs = songScores(d.plays, d.likes);
+    if (!songs.length) {
       const home = await ytmusic.home();
-      const songs = home.flatMap((s) => s.items.filter((i) => i.kind === "song"));
-      return { basedOn: null, songs: shuffle(songs).slice(0, 20) };
+      const list = home.flatMap((s) => s.items.filter((i) => i.kind === "song"));
+      return { basedOn: null, songs: shuffle(list).slice(0, 24) };
     }
-    const seeds = shuffle(recent).slice(0, 3);
-    const radios = await Promise.all(seeds.map((s) => ytmusic.radio(s.id).catch(() => [])));
-    const played = new Set(recent.map((t) => t.id));
-    const mixed = [];
-    const iters = radios.map((r) => shuffle(r.filter((t) => !played.has(t.id) && t.artist))[Symbol.iterator]());
-    for (let more = true; more;) {
-      more = false;
-      for (const it of iters) {
-        const n = it.next();
-        if (!n.done) { mixed.push(n.value); more = true; }
-      }
-    }
-    const seen = new Set();
-    return { basedOn: seeds[0].title, songs: mixed.filter((t) => !seen.has(t.id) && seen.add(t.id)).slice(0, 24) };
+    const seed = fresh ? `${day()}:${Date.now()}` : day();
+    if (!fresh && picks && picks.seed === seed && Date.now() - picks.at < 6 * 3_600_000) return picks.data;
+    const seeds = pickSeeds(songs, 3, seed);
+    const radios = await Promise.all(seeds.map((t) => ytmusic.radio(t.id).catch(() => [])));
+    const similar = [];
+    for (let i = 0; radios.some((r) => r.length > i); i++) for (const r of radios) if (r[i]?.artist) similar.push(r[i]);
+    const recentIds = new Set(d.history.slice(0, 25).map((h) => h.track.id));
+    const data = {
+      basedOn: [...new Set(seeds.map((t) => (t.artist ?? "").split(",")[0].trim()).filter(Boolean))].join(", ") || null,
+      songs: mixQuickPicks({ favourites: songs.map((s) => s.track), similar, recentIds, seed }),
+    };
+    if (data.songs.length) picks = { seed, at: Date.now(), data };
+    return data;
+  }
+
+  const artistPages = new Map(); // artist id -> { at, page }
+  const artistIds = new Map(); // lower-case name -> id (or null)
+
+  async function artistPage(id) {
+    const hit = artistPages.get(id);
+    if (hit && Date.now() - hit.at < 12 * 3_600_000) return hit.page;
+    const page = await ytmusic.artist(id);
+    artistPages.set(id, { at: Date.now(), page });
+    return page;
+  }
+
+  /** An artist's YouTube Music id from their name, when a played song didn't carry it. */
+  async function artistIdFor(name) {
+    const key = name.toLowerCase();
+    if (artistIds.has(key)) return artistIds.get(key);
+    const res = await ytmusic.search(name).catch(() => null);
+    const found = (res?.artists ?? []).find((a) => a.title?.toLowerCase() === key) ?? res?.artists?.[0];
+    artistIds.set(key, found?.id ?? null);
+    return found?.id ?? null;
+  }
+
+  /** New releases from the artists you play most. */
+  async function newReleases() {
+    const d = store.snapshot();
+    const artists = artistScores(songScores(d.plays, d.likes)).slice(0, 10);
+    let lookups = 0;
+    for (const a of artists) if (!a.id && lookups++ < 4) a.id = await artistIdFor(a.name);
+    const withId = artists.filter((a) => a.id).slice(0, 8);
+    const pages = await Promise.all(withId.map(async (artist) => ({ artist, page: await artistPage(artist.id).catch(() => null) })));
+    return pickReleases(pages);
+  }
+
+  /** YouTube Music's home, with its generic quick picks and new releases swapped for yours. */
+  async function home() {
+    const [feed, releases] = await Promise.all([ytmusic.home(), newReleases().catch((e) => { log(`new releases: ${e.message}`); return []; })]);
+    const generic = /quick picks|new release/i;
+    const mine = releases.length >= 3;
+    const rest = feed.filter((s) => !/quick picks/i.test(s.title) && !(mine && generic.test(s.title)));
+    return mine ? [{ title: "New releases from your artists", items: releases }, ...rest] : rest;
   }
 
   // ---- audio ------------------------------------------------------------
@@ -388,9 +436,9 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
       case "GET status":
         return send(res, 200, { version, ytdlp: await ytdlp.version().catch((e) => `unavailable: ${e.message}`), youtube: { signedIn: youtubeAuth.signedIn(), canSignIn: !!vault, account: await account() } });
       case "GET home":
-        return send(res, 200, { shelves: await ytmusic.home() });
+        return send(res, 200, { shelves: await home() });
       case "GET foryou":
-        return send(res, 200, await forYou());
+        return send(res, 200, await forYou(url.searchParams.get("fresh") === "1"));
       case "GET search": {
         const q = (url.searchParams.get("q") ?? "").trim().slice(0, 200);
         if (!q) throw new HttpError(400, "empty search");

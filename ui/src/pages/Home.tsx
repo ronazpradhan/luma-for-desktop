@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { api, type Track } from "../api";
 import { Art, Failed, MoonPhase, SkeletonRows, SkeletonShelf } from "../components/bits";
@@ -8,7 +9,9 @@ import { greeting, useAsync } from "./common";
 
 export function Home() {
   const feed = useAsync(() => api.home(), []);
-  const forYou = useAsync(() => api.forYou(), []);
+  // The first load keeps today's mix; Refresh asks for a new one.
+  const [fresh, setFresh] = useState(0);
+  const forYou = useAsync(() => api.forYou(fresh > 0), [fresh]);
   const history = useLibrary((s) => s.history);
   const recent = history.slice(0, 8).map((h) => h.track);
 
@@ -30,11 +33,11 @@ export function Home() {
       <section className="block">
         <header className="block-head">
           <div>
-            <h2 className="block-title">Suggested for you</h2>
-            {forYou.data?.basedOn && <p className="block-sub">Because you played {forYou.data.basedOn}</p>}
+            <h2 className="block-title">Quick picks</h2>
+            <p className="block-sub">{forYou.data?.basedOn ? `Because you play ${forYou.data.basedOn}` : "Play a few songs and these become yours"}</p>
           </div>
-          <button className="btn btn-quiet" onClick={forYou.reload} disabled={forYou.loading} aria-label="New suggestions">
-            <RefreshCw size={15} className={forYou.loading ? "spin" : ""} /> New suggestions
+          <button className="btn btn-quiet" onClick={() => setFresh((n) => n + 1)} disabled={forYou.loading} aria-label="New quick picks" title="New quick picks">
+            <RefreshCw size={15} className={forYou.loading ? "spin" : ""} /> Refresh
           </button>
         </header>
         {forYou.error && !forYou.data ? (
@@ -43,7 +46,7 @@ export function Home() {
           <SkeletonRows count={6} />
         ) : (
           <div className={`song-grid ${forYou.loading ? "is-stale" : ""}`}>
-            {forYou.data.songs.slice(0, 12).map((t) => <SongCell key={t.id} track={t} />)}
+            {forYou.data.songs.slice(0, 18).map((t) => <SongCell key={t.id} track={t} />)}
           </div>
         )}
       </section>
