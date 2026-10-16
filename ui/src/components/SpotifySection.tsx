@@ -54,7 +54,7 @@ export function SpotifySection() {
 
   async function disconnect() {
     await bridge?.spotifySignOut();
-    toast("Disconnected Spotify. Imported playlists stay in your library.");
+    toast("Disconnected Spotify");
     refresh();
   }
 
@@ -80,8 +80,8 @@ export function SpotifySection() {
           )}
           <p>
             {status?.connected
-              ? "Your Spotify Liked Songs and playlists are in your Library as LUMA playlists, and play through LUMA's sources."
-              : "Bring your Spotify Liked Songs and playlists into LUMA. You sign in to Spotify in your own browser, then hand LUMA that sign-in."}
+              ? "Your Spotify playlists are in your Library."
+              : "Bring your Spotify Liked Songs and playlists into LUMA."}
           </p>
         </span>
         {!bridge ? (
@@ -93,13 +93,9 @@ export function SpotifySection() {
       {bridge && !status?.connected && status?.canConnect !== false && (
         <>
           <ol className="steps">
-            <li>
-              In your browser, go to{" "}
-              <a className="link strong" href="https://open.spotify.com/" target="_blank" rel="noreferrer">open.spotify.com</a>{" "}
-              and sign in. Any way works there, Google too.
-            </li>
-            <li>Press <kbd>F12</kbd>, open <b>Application</b>, then <b>Cookies</b> › <b>https://open.spotify.com</b>.</li>
-            <li>Click <b>sp_dc</b>, copy its whole <b>Value</b>, and paste it here.</li>
+            <li>Sign in at <a className="link strong" href="https://open.spotify.com/" target="_blank" rel="noreferrer">open.spotify.com</a>.</li>
+            <li>Press <kbd>F12</kbd> → <b>Application</b> → <b>Cookies</b>.</li>
+            <li>Copy the value of <b>sp_dc</b> and paste it here.</li>
           </ol>
           <form
             className="actions compact"
@@ -123,7 +119,7 @@ export function SpotifySection() {
           </form>
           <div className="actions compact">
             <button className="btn" disabled={!!busy} onClick={() => connect("file", () => bridge.spotifyFromFile())}>
-              {busy === "file" ? "Checking with Spotify" : "Or choose a cookies file"}
+              {busy === "file" ? "Checking with Spotify" : "Use a cookies file"}
             </button>
             {browsers.map((b) => (
               <button key={b} className="btn" disabled={!!busy} onClick={() => connect(b, () => bridge.spotifyFromBrowser(b))}>
@@ -131,12 +127,10 @@ export function SpotifySection() {
               </button>
             ))}
           </div>
-          <p className="muted small">
-            LUMA keeps only that one Spotify sign-in, encrypted on this PC. It never sees your password and never changes anything on Spotify. Signing out of Spotify in the browser ends it, so use a private window if you sign out often.
-          </p>
+          <p className="muted small">Kept encrypted on this PC. Nothing on Spotify is changed.</p>
         </>
       )}
-      {status?.canConnect === false && <p className="muted small">Windows can't protect saved sign-ins on this PC, so LUMA can't keep one.</p>}
+      {status?.canConnect === false && <p className="muted small">Sign-in isn't available on this PC.</p>}
       {status?.connected && imp && (
         <div className="import-row">
           {imp.state === "running" ? (
@@ -149,9 +143,9 @@ export function SpotifySection() {
               <span className="muted small">
                 {imp.state === "done"
                   ? imp.songs === 0
-                    ? `Found ${imp.playlists} playlists, but Spotify sent no songs in them.${imp.unread ? ` ${imp.unread} couldn't be read.` : ""} The log (luma.log) says why.`
-                    : `Imported ${imp.playlists} playlists: ${imp.found ?? imp.songs - imp.unmatched} of ${imp.songs} songs found on YouTube Music.${imp.unread ? ` ${imp.unread} playlists couldn't be read.` : ""}`
-                  : imp.state === "failed" ? `The import stopped: ${imp.error}` : "Not imported yet."}
+                    ? `No songs came from Spotify. See luma.log.`
+                    : `${imp.playlists} playlists · ${imp.found ?? imp.songs - imp.unmatched} of ${imp.songs} songs found`
+                  : imp.state === "failed" ? `Import stopped: ${imp.error}` : "Not imported yet"}
               </span>
               <button className="btn btn-quiet" onClick={importAgain}>{imp.state === "idle" ? "Import now" : "Import again"}</button>
             </>

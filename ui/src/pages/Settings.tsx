@@ -59,7 +59,7 @@ export function Settings() {
         <label className="toggle-row">
           <span>
             <b>Autoplay</b>
-            <small>When the queue ends, keep playing songs like the last one, the way YouTube Music does.</small>
+            <small>Keep playing similar songs when the queue ends.</small>
           </span>
           <input type="checkbox" className="switch" checked={autoplay} onChange={(e) => setAutoplay(e.target.checked)} />
         </label>
@@ -81,9 +81,9 @@ export function Settings() {
             <p>
               {yt?.signedIn
                 ? yt.account
-                  ? "Your YouTube Music likes and playlists are in your Library, and songs that aren't on JioSaavn play from YouTube with this account."
-                  : "This sign-in no longer works with YouTube. Disconnect it and connect again."
-                : "Connect your YouTube account to see your YouTube Music likes and playlists here, and to play songs that aren't on JioSaavn."}
+                  ? "Your likes and playlists are in your Library."
+                  : "This sign-in stopped working. Disconnect and connect again."
+                : "See your YouTube Music likes and playlists, and play hard-to-find songs."}
             </p>
           </span>
           {yt?.signedIn && <button className="btn" onClick={signOut}>Disconnect</button>}
@@ -92,13 +92,9 @@ export function Settings() {
         {bridge && !yt?.signedIn && yt?.canSignIn !== false && (
           <>
             <ol className="steps">
-              <li>
-                In your browser, add the free <b>Get cookies.txt LOCALLY</b> extension.{" "}
-                <a className="link strong" href={EXTENSION_URL} target="_blank" rel="noreferrer">Get it</a>
-              </li>
-              <li>Open a private window (Ctrl+Shift+N), go to music.youtube.com and sign in.</li>
-              <li>Click the extension, then <b>Export</b>. It saves a .txt file.</li>
-              <li>Close the private window, then choose that file here.</li>
+              <li>Add the <a className="link strong" href={EXTENSION_URL} target="_blank" rel="noreferrer">Get cookies.txt LOCALLY</a> extension.</li>
+              <li>In a private window, sign in at music.youtube.com.</li>
+              <li>Click the extension → <b>Export</b>, then choose the file here.</li>
             </ol>
             <div className="actions compact">
               <button className="btn btn-primary" disabled={!!busy} onClick={() => connect("file", () => bridge.youtubeFromFile())}>
@@ -111,15 +107,13 @@ export function Settings() {
               ))}
             </div>
             {problem && <p className="problem">{problem}</p>}
-            <p className="muted small">
-              LUMA keeps only the YouTube sign-in from the file, encrypted on this PC, and never sees your password. Delete the .txt file afterwards. A private window keeps this sign-in separate from your everyday browsing, so it lasts longer.
-            </p>
+            <p className="muted small">Kept encrypted on this PC. LUMA never sees your password.</p>
           </>
         )}
-        {yt?.canSignIn === false && <p className="muted small">Windows can't protect saved sign-ins on this PC, so LUMA can't keep one.</p>}
+        {yt?.canSignIn === false && <p className="muted small">Sign-in isn't available on this PC.</p>}
         {hiddenYt > 0 && (
           <div className="import-row">
-            <span className="muted small">{hiddenYt} YouTube Music {hiddenYt === 1 ? "playlist is" : "playlists are"} removed from LUMA.</span>
+            <span className="muted small">{hiddenYt} {hiddenYt === 1 ? "playlist" : "playlists"} hidden</span>
             <button className="btn btn-quiet" onClick={async () => { useLibrary.setState({ settings: await api.settings({ hiddenYouTube: [] }) }); toast("Your YouTube Music playlists are back"); }}>Show again</button>
           </div>
         )}
@@ -128,10 +122,6 @@ export function Settings() {
       <SpotifySection />
 
       <LyricsSection />
-      <section className="settings-group">
-        <h2>Where songs come from</h2>
-        <p>LUMA looks for each song on JioSaavn and YouTube at once and plays whichever is ready first. Connecting YouTube above helps with songs that are hard to find. Downloads are saved to the LUMA folder in your Music folder and play without internet.</p>
-      </section>
       <AppSection />
       <section className="settings-group">
         <h2>About</h2>
@@ -140,7 +130,7 @@ export function Settings() {
           <dt>Updates</dt><dd><UpdateStatus /></dd>
           <dt>YouTube helper</dt><dd>{!status.data ? "…" : /^unavailable/i.test(status.data.ytdlp) ? "Not ready yet" : status.data.ytdlp}</dd>
         </dl>
-        <p className="muted small">Made by Ronaz Pradhan. LUMA for Android is a fork of Stash by rawnaldclark (GPL-3.0). YouTube playback follows Spotube's approach, with YouTube.js and yt-dlp. Lyrics from LRCLIB.</p>
+        <p className="muted small">Made by Ronaz Pradhan.</p>
       </section>
       <section className="settings-group">
         <h2>Shortcuts</h2>
@@ -192,7 +182,7 @@ function AppSection() {
       <div className="account-row">
         <span>
           <h2>LUMA on this PC</h2>
-          <p>Downloads are in your Music folder under LUMA. You can also uninstall LUMA from Windows Settings › Apps.</p>
+          <p>Downloads are in Music › LUMA.</p>
         </span>
         <button className="btn danger" onClick={uninstall}>Uninstall LUMA</button>
       </div>
@@ -220,9 +210,9 @@ function LyricsSection() {
   return (
     <section className="settings-group">
       <h2>Lyrics</h2>
-      <p>LUMA asks LyricsPlus (YouLy+), Unison (Better Lyrics), SimpMusic, LRCLIB and KuGou, and shows the best: word-timed when it can be, grouped into verses and choruses. Lyrics are saved on this PC after the first look-up.</p>
+      <p>From LyricsPlus, Unison, SimpMusic, LRCLIB and KuGou.</p>
       <form className="actions compact" onSubmit={(e) => { e.preventDefault(); save(); }}>
-        <input className="paste" placeholder="Your own LyricsPlus server (optional), https://…" value={value} onChange={(e) => setValue(e.target.value)} spellCheck={false} aria-label="LyricsPlus server" />
+        <input className="paste" placeholder="Own LyricsPlus server (optional)" value={value} onChange={(e) => setValue(e.target.value)} spellCheck={false} aria-label="LyricsPlus server" />
         <button className="btn" type="submit" disabled={value.trim() === saved}>Save</button>
       </form>
       {problem && <p className="problem">{problem}</p>}
