@@ -1,0 +1,41 @@
+LUMA for Windows
+Copyright (C) 2026 Ronaz Pradhan
+https://github.com/ronazpradhan/luma-for-desktop
+
+This program is free software: you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the Free
+Software Foundation, version 3 (see LICENSE), together with the additional
+terms below.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE. See the GNU General Public License for details.
+
+
+ADDITIONAL TERMS (GNU GPL version 3, section 7)
+-----------------------------------------------
+
+As allowed by section 7 of the GNU General Public License version 3, the
+following terms apply to this program and to every copy, modified version
+and work based on it ("covered work"):
+
+1. Attribution (section 7(b)).
+   Keep this NOTICE file and the line "Copyright (C) 2026 Ronaz Pradhan" in
+   the source code of every covered work.
+
+2. Visible credit (section 7(b)).
+   Every covered work that is conveyed to others, as source code or as an
+   app, must show this credit where its credits, "About" information or
+   documentation appear to users, including its README:
+
+       Based on LUMA by Ronaz Pradhan
+       https://github.com/ronazpradhan/luma-for-desktop
+
+3. Marking modified versions (section 7(c)).
+   A modified version must say that it has been modified, and must not
+   present itself as the official LUMA or suggest that Ronaz Pradhan made or
+   endorses it.
+
+These terms cover the parts of this program written by Ronaz Pradhan.
+Third-party components keep their own licences and notices; see the
+README's "Thanks" section.

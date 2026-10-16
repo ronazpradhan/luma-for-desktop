@@ -42,7 +42,7 @@
   "build": {
     "appId": "com.luma.desktop",
     "productName": "LUMA",
-    "copyright": "Copyright © 2026 Ronaz Pradhan",
+    "copyright": "Copyright \u00a9 2026 Ronaz Pradhan",
     "directories": {
       "output": "release",
       "buildResources": "build"
@@ -52,7 +52,9 @@
       "core/**",
       "!core/test/**",
       "dist/**",
-      "package.json"
+      "package.json",
+      "LICENSE",
+      "NOTICE"
     ],
     "asar": true,
     "win": {
@@ -93,5 +95,6 @@
         "releaseType": "release"
       }
     ]
-  }
+  },
+  "copyright": null
 }

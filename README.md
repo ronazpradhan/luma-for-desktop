@@ -1,8 +1,10 @@
 <p align="center"><img src="build/icon.png" width="96" alt="LUMA"></p>
 
-<h1 align="center">LUMA for Windows</h1>
+<h1 align="center">🌙 LUMA for Windows</h1>
 
-<p align="center">A free music player for your PC. Search almost any song, play it in seconds, download it for offline listening, and sing along with live lyrics.</p>
+<p align="center">A free, ad-free music player for your PC. Search almost any song, play it in seconds, download it for offline listening, and sing along with live lyrics.</p>
+
+<p align="center"><sub>Made by <a href="https://github.com/ronazpradhan"><b>Ronaz Pradhan</b></a> · Using this code? <a href="#-using-lumas-code-credit-is-required">Credit is required</a></sub></p>
 
 <p align="center">
   <a href="https://github.com/ronazpradhan/luma-for-desktop/releases/latest/download/LUMA-Setup.exe"><b>⬇ Download LUMA for Windows</b></a>
@@ -46,8 +48,8 @@ You can see your version and check for updates yourself in **Settings → About*
 
 - **Plays almost anything, fast.** Each song is looked up on JioSaavn and YouTube at once and plays from whichever is ready first, usually in under a second.
 - **Live lyrics, grouped like a lyric sheet.** Verses, choruses and bridges are labelled and spaced apart, and lyrics light up word by word when the source times each word. Click a line to jump to it.
-- **Never runs out.** When your queue ends, autoplay keeps going with songs like the last one.
-- **A home that learns you.** Suggestions grow from what you play, next to YouTube Music's picks and new releases.
+- **Never runs out.** Autoplay lines up songs like the last one, and you can see them coming in the queue.
+- **A home that learns you.** Quick picks follow the vibe you're in, and New releases come from the artists you play most.
 - **Your library, on your PC.** Liked songs, your own playlists and your history are saved on this computer. Right-click any playlist to play, shuffle, rename or delete it.
 - **Downloads.** Save songs to `Music\LUMA` and play them without internet.
 - **Bring your music with you.**
@@ -104,8 +106,24 @@ git push && git push origin v0.6.1
 
 The tag must match the version in `package.json`. The workflow tests the app, builds `LUMA-Setup.exe`, and publishes a release with `latest.yml`, which is the file installed copies check for updates. To edit the release notes, open the release on GitHub after the workflow finishes.
 
-## Credits
+## 📜 Using LUMA's code? Credit is required
 
-Made by Ronaz Pradhan. LUMA for Android is a fork of [Stash](https://github.com/rawnaldclark/Stash) by rawnaldclark, and this app reuses its approach to matching songs on JioSaavn. Lyrics come from [LyricsPlus](https://github.com/ibratabian17/lyricsplus) (the backend of [YouLy+](https://github.com/ibratabian17/YouLyPlus)), [Unison](https://github.com/better-lyrics/unison) (from [Better Lyrics](https://github.com/better-lyrics/better-lyrics)), [SimpMusic Lyrics](https://github.com/maxrave-dev/SimpMusic), [LRCLIB](https://lrclib.net) and KuGou. Thanks to the people who run them; LUMA keeps lyrics on your PC after the first look-up so each song is asked for once, and you can point it at your own LyricsPlus server in Settings. YouTube playback works the way [Spotube](https://github.com/KRTirtho/spotube)'s YouTube plugin does, through [YouTube.js](https://github.com/LuanRT/YouTube.js), with [yt-dlp](https://github.com/yt-dlp/yt-dlp) as the last resort (downloaded on first use from its official releases and checked against their published checksums). Thanks to the Spotube, YouTube.js and yt-dlp teams.
+LUMA is free and open source under the [GPL-3.0](LICENSE), **with an attribution requirement** (GPL-3.0 section 7, written out in [`NOTICE`](NOTICE)). You're welcome to use, study, change and share it, as long as you do all of this:
 
-Licensed under [GPL-3.0](LICENSE).
+1. **Credit Ronaz Pradhan where people can see it.** Put this in your app's About or credits screen, and in your README:
+
+   > Based on [LUMA](https://github.com/ronazpradhan/luma-for-desktop) by **Ronaz Pradhan**
+
+2. **Keep the copyright line and the [`NOTICE`](NOTICE) file** in your source code.
+3. **Keep it open source.** Your version stays under GPL-3.0, and anyone you give it to can get its source code.
+4. **Say it's modified.** Don't present your version as the official LUMA, or as made or endorsed by Ronaz Pradhan.
+
+Using LUMA's code without this credit breaks its licence. Questions, or want to do something the licence doesn't cover? [Open an issue](https://github.com/ronazpradhan/luma-for-desktop/issues).
+
+## 💜 Thanks
+
+LUMA for Android is a fork of [Stash](https://github.com/rawnaldclark/Stash) by rawnaldclark, and this app reuses its approach to matching songs on JioSaavn. Lyrics come from [LyricsPlus](https://github.com/ibratabian17/lyricsplus) (the backend of [YouLy+](https://github.com/ibratabian17/YouLyPlus)), [Unison](https://github.com/better-lyrics/unison) (from [Better Lyrics](https://github.com/better-lyrics/better-lyrics)), [SimpMusic Lyrics](https://github.com/maxrave-dev/SimpMusic), [LRCLIB](https://lrclib.net) and KuGou. Thanks to the people who run them; LUMA keeps lyrics on your PC after the first look-up so each song is asked for once, and you can point it at your own LyricsPlus server in Settings. YouTube playback works the way [Spotube](https://github.com/KRTirtho/spotube)'s YouTube plugin does, through [YouTube.js](https://github.com/LuanRT/YouTube.js), with [yt-dlp](https://github.com/yt-dlp/yt-dlp) as the last resort (downloaded on first use from its official releases and checked against their published checksums). Thanks to the Spotube, YouTube.js and yt-dlp teams.
+
+---
+
+<p align="center">© 2026 Ronaz Pradhan · <a href="LICENSE">GPL-3.0</a> with <a href="NOTICE">attribution terms</a></p>
