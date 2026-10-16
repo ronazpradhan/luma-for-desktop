@@ -252,7 +252,7 @@ h1, h2, h3, p { margin: 0; }
 
 .spinner { display: inline-block; border-radius: 50%; border: 2px solid rgb(255 255 255 / 0.18); border-top-color: var(--accent); animation: spin 0.8s linear infinite; flex: none; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.dl-ring { --p: 0; width: 16px; height: 16px; border-radius: 50%; flex: none; background: conic-gradient(var(--accent) calc(var(--p) * 360deg), rgb(255 255 255 / 0.15) 0); -webkit-mask: radial-gradient(circle, transparent 4.5px, #000 5px); }
+.dl-ring { --p: 0; width: 16px; height: 16px; margin-right: 6px; border-radius: 50%; flex: none; background: conic-gradient(var(--accent) calc(var(--p) * 360deg), rgb(255 255 255 / 0.15) 0); -webkit-mask: radial-gradient(circle, transparent 4.5px, #000 5px); }
 .dl-ring.big { width: 20px; height: 20px; margin: 0 7px; -webkit-mask: radial-gradient(circle, transparent 6px, #000 6.5px); }
 
 
@@ -350,7 +350,12 @@ h1, h2, h3, p { margin: 0; }
 .row-time { width: 44px; text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; }
 .row-like, .row-more { opacity: 0; }
 .row:hover .row-like, .row:hover .row-more, .row-like.is-on, .row:focus-within .row-like, .row:focus-within .row-more { opacity: 1; }
-.row-downloaded { color: var(--accent); margin-right: 6px; }
+/* Always there, so rows line up whether or not the song is downloaded. */
+.row-downloaded { display: inline-grid; place-items: center; width: 16px; height: 16px; margin-right: 6px; }
+.downloaded-slot { display: inline-grid; place-items: center; width: 34px; height: 34px; }
+.downloaded-slot.round { width: 38px; height: 38px; }
+.downloaded-badge { filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 45%, transparent)); }
+.btn-done { cursor: default; background: transparent; border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
 
 /* ---- collection pages ------------------------------------------------- */
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { Download, EyeOff, Pencil, Play, Shuffle, Trash2 } from "lucide-react";
+import { EyeOff, Pencil, Play, Shuffle, Trash2 } from "lucide-react";
 import { api, type Track } from "../api";
-import { Art, Empty, Failed, SkeletonRows } from "../components/bits";
+import { Art, DownloadGlyph, DownloadedBadge, Empty, Failed, SkeletonRows } from "../components/bits";
 import { TrackList } from "../components/TrackList";
 import { useLibrary } from "../library";
 import { useNav } from "../nav";
@@ -40,9 +40,13 @@ function CollectionView({ header, tracks, label, showAlbum = true, numbered = fa
         <button className="btn btn-primary" disabled={!tracks.length} onClick={() => player.playList(tracks, 0, label)}><Play size={18} fill="currentColor" /> Play</button>
         <button className="btn" disabled={!tracks.length} onClick={() => { player.playList(tracks, Math.floor(Math.random() * tracks.length), label); if (!player.shuffle) player.toggleShuffle(); }}><Shuffle size={17} /> Shuffle</button>
         {tracks.length > 0 && (
-          <button className="btn" disabled={!missing.length} onClick={() => lib.download(missing)}>
-            <Download size={17} /> {missing.length ? (missing.length === tracks.length ? "Download all" : `Download ${missing.length} more`) : "All downloaded"}
-          </button>
+          missing.length ? (
+            <button className="btn" onClick={() => lib.download(missing)}>
+              <DownloadGlyph size={17} /> {missing.length === tracks.length ? "Download all" : `Download ${missing.length} more`}
+            </button>
+          ) : (
+            <span className="btn btn-done"><DownloadedBadge size={18} label="" /> All downloaded</span>
+          )
         )}
         {extra}
       </div>

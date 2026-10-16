@@ -1,9 +1,9 @@
-import { Download, Heart, MoreHorizontal, Play } from "lucide-react";
+import { Heart, MoreHorizontal, Play } from "lucide-react";
 import { formatTime, type Track } from "../api";
 import { useLibrary } from "../library";
 import { useNav } from "../nav";
 import { coolOnLeave, usePlayer, warmOnHover } from "../player";
-import { Art, MoonPhase, Spinner } from "./bits";
+import { Art, DownloadedBadge, MoonPhase, Spinner } from "./bits";
 import { useTrackMenu } from "./TrackMenu";
 
 type Props = {
@@ -73,8 +73,10 @@ function TrackRow({ track, index, numbered, showArt, showAlbum, playlistId, onPl
         {dl?.state === "running" ? (
           <span className="dl-ring" style={{ ["--p" as string]: dl.progress }} aria-label="Downloading" />
         ) : downloaded ? (
-          <Download size={14} className="row-downloaded" aria-label="Downloaded" />
-        ) : null}
+          <span className="row-downloaded"><DownloadedBadge size={16} /></span>
+        ) : (
+          <span className="row-downloaded" aria-hidden />
+        )}
         <button className={`icon-btn row-like ${liked ? "is-on" : ""}`} onClick={() => toggleLike(track)} aria-label={liked ? "Remove from Liked songs" : "Add to Liked songs"} title={liked ? "Remove from Liked songs" : "Add to Liked songs"} aria-pressed={liked}>
           <Heart size={16} fill={liked ? "currentColor" : "none"} />
         </button>

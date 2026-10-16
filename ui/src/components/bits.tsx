@@ -101,3 +101,24 @@ export function SkeletonShelf({ count = 6 }: { count?: number }) {
     </section>
   );
 }
+
+/** Download: an outlined circle with an arrow down. */
+export function DownloadGlyph({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="12" cy="12" r="9.5" />
+      <path d="M12 7.5v8M8.5 12.5 12 16l3.5-3.5" />
+    </svg>
+  );
+}
+
+/** Downloaded: a solid disc in the song's accent with a check, unmistakable next to DownloadGlyph. */
+export function DownloadedBadge({ size = 18, label = "Downloaded" }: { size?: number; label?: string }) {
+  return (
+    <svg className="downloaded-badge" width={size} height={size} viewBox="0 0 24 24" role="img" aria-label={label}>
+      <title>{label}</title>
+      <circle cx="12" cy="12" r="10.5" fill="var(--accent)" />
+      <path d="m7.5 12.3 3 3 6-6.3" fill="none" stroke="var(--night)" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}

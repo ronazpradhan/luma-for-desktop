@@ -1,13 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronLeft, Search, X } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { api } from "../api";
 import { useNav } from "../nav";
 
 /** Back, the search box, and the draggable strip the window controls sit in. */
 export function TopBar() {
   const route = useNav((s) => s.route);
-  const canBack = useNav((s) => s.stack.length > 1);
-  const back = useNav((s) => s.back);
   const go = useNav((s) => s.go);
   const replace = useNav((s) => s.replace);
   const [text, setText] = useState(route.name === "search" ? route.q ?? "" : "");
@@ -53,7 +51,6 @@ export function TopBar() {
 
   return (
     <header className="topbar">
-      <button className="icon-btn round" onClick={back} disabled={!canBack} aria-label="Back" title="Back"><ChevronLeft size={20} /></button>
       <form className={`searchbox ${open && suggestions.length ? "has-list" : ""}`} role="search" onSubmit={(e) => { e.preventDefault(); submit(active >= 0 ? suggestions[active] : text); }}>
         <Search size={17} aria-hidden />
         <input

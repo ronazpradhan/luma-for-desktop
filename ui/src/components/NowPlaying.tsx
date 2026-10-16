@@ -1,10 +1,10 @@
 import { useEffect } from "react";
-import { ChevronDown, Download, Heart, ListMusic } from "lucide-react";
+import { ChevronDown, Heart, ListMusic } from "lucide-react";
 import { img } from "../api";
 import { useLibrary } from "../library";
 import { useNav } from "../nav";
 import { usePlayer } from "../player";
-import { Art } from "./bits";
+import { Art, DownloadGlyph, DownloadedBadge } from "./bits";
 import { LyricsPane } from "./Lyrics";
 import { Seek, Transport } from "./PlayerBar";
 
@@ -61,7 +61,11 @@ export function NowPlaying() {
               {dl?.state === "running" ? (
                 <span className="dl-ring big" style={{ ["--p" as string]: dl.progress }} aria-label="Downloading" />
               ) : (
-                <button className={`icon-btn round ${downloaded ? "is-on" : ""}`} disabled={downloaded} onClick={() => lib.download([track])} aria-label={downloaded ? "Downloaded" : "Download"} title={downloaded ? "Downloaded" : "Download"}><Download size={20} /></button>
+                downloaded ? (
+                  <span className="downloaded-slot round"><DownloadedBadge size={24} label="Downloaded: plays without internet" /></span>
+                ) : (
+                  <button className="icon-btn round" onClick={() => lib.download([track])} aria-label="Download" title="Download"><DownloadGlyph size={20} /></button>
+                )
               )}
               <button className={`icon-btn round heart ${liked ? "is-on" : ""}`} onClick={() => lib.toggleLike(track)} aria-label={liked ? "Remove from Liked songs" : "Add to Liked songs"} title={liked ? "Remove from Liked songs" : "Add to Liked songs"} aria-pressed={liked}>
                 <Heart size={20} fill={liked ? "currentColor" : "none"} />

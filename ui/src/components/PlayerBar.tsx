@@ -1,10 +1,10 @@
-import { Download, Heart, ListMusic, Maximize2, Mic2, Pause, Play, Repeat, Repeat1, Shuffle, SkipBack, SkipForward, Volume1, Volume2, VolumeX } from "lucide-react";
+import { Heart, ListMusic, Maximize2, Mic2, Pause, Play, Repeat, Repeat1, Shuffle, SkipBack, SkipForward, Volume1, Volume2, VolumeX } from "lucide-react";
 import { useState } from "react";
 import { formatTime } from "../api";
 import { useLibrary } from "../library";
 import { useNav } from "../nav";
 import { usePlayer } from "../player";
-import { Art, Spinner } from "./bits";
+import { Art, DownloadGlyph, DownloadedBadge, Spinner } from "./bits";
 
 export function Seek({ className = "" }: { className?: string }) {
   const position = usePlayer((s) => s.position);
@@ -101,9 +101,13 @@ export function PlayerBar() {
           dl?.state === "running" ? (
             <span className="dl-ring big" style={{ ["--p" as string]: dl.progress }} aria-label="Downloading" />
           ) : (
-            <button className={`icon-btn ${downloaded ? "is-on" : ""}`} disabled={downloaded} onClick={() => lib.download([track])} aria-label={downloaded ? "Downloaded" : "Download"} title={downloaded ? "Downloaded" : "Download"}>
-              <Download size={18} />
-            </button>
+            downloaded ? (
+              <span className="downloaded-slot"><DownloadedBadge size={20} label="Downloaded: plays without internet" /></span>
+            ) : (
+              <button className="icon-btn" onClick={() => lib.download([track])} aria-label="Download" title="Download">
+                <DownloadGlyph size={19} />
+              </button>
+            )
           )
         )}
         <button className={`icon-btn ${p.nowPlayingOpen ? "is-on" : ""}`} onClick={() => p.setNowPlaying(!p.nowPlayingOpen)} aria-label="Lyrics" title="Lyrics" disabled={!track}><Mic2 size={18} /></button>
