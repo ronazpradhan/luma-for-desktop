@@ -6,7 +6,6 @@ import { useLibrary } from "../library";
 import { useNav } from "../nav";
 import { usePlayer } from "../player";
 import { toast } from "../toast";
-import { confirmAsk } from "./Confirm";
 
 /** What was right-clicked: one of your playlists, a YouTube Music one, Liked songs or Downloads. */
 export type MenuTarget =
@@ -31,35 +30,18 @@ export const openPlaylistMenu = (target: MenuTarget) => (e: React.MouseEvent) =>
   usePlaylistMenu.getState().open(target, e.clientX, e.clientY);
 };
 
-/** Asked from the menu, the playlist page, or the Delete key on a playlist. */
-export async function deletePlaylistAsk(p: Playlist) {
-  const imported = p.source?.startsWith("spotify:");
-  const ok = await confirmAsk({
-    title: `Delete "${p.name}"?`,
-    message: imported
-      ? "Its songs stay in your library, and importing from Spotify again won't bring this playlist back."
-      : "Its songs stay in your library.",
-    action: "Delete playlist",
-  });
-  if (!ok) return;
-  await useLibrary.getState().deletePlaylist(p.id);
+/** Deletes at once, with Undo for 5 s (from the menu, the playlist page or the Delete key). */
+export function deletePlaylistAsk(p: Playlist) {
+  useLibrary.getState().deletePlaylist(p.id);
   const nav = useNav.getState();
   if (nav.route.name === "playlist" && nav.route.id === p.id) nav.go({ name: "library" });
-  toast(`Deleted "${p.name}"`);
 }
 
-/** A YouTube Music playlist leaves LUMA; it stays on YouTube, and Settings can bring it back. */
-export async function hideYouTubeAsk(id: string, title: string) {
-  const ok = await confirmAsk({
-    title: `Remove "${title}" from LUMA?`,
-    message: "It stays on your YouTube account. You can show it again from Settings › YouTube.",
-    action: "Remove from LUMA",
-  });
-  if (!ok) return;
-  await useLibrary.getState().hideYouTube(id, true);
+/** A YouTube Music playlist leaves LUMA (it stays on YouTube), with Undo for 5 s. */
+export function hideYouTubeAsk(id: string) {
+  useLibrary.getState().hideYouTube(id, true);
   const nav = useNav.getState();
   if (nav.route.name === "ytplaylist" && nav.route.id === id) nav.go({ name: "library" });
-  toast(`Removed "${title}" from LUMA`);
 }
 
 /** Set when Rename is chosen from the menu, so the playlist page opens its name for editing. */
@@ -142,13 +124,13 @@ export function PlaylistMenu() {
         <>
           <hr />
           <button className="menu-item" role="menuitem" onClick={act(() => { useRenaming.setState({ id: own.id }); useNav.getState().go({ name: "playlist", id: own.id }); })}><Pencil size={16} /> Rename</button>
-          <button className="menu-item menu-destructive" role="menuitem" onClick={act(() => deletePlaylistAsk(own))}><Trash2 size={16} /> Delete playlist…</button>
+          <button className="menu-item menu-destructive" role="menuitem" onClick={act(() => deletePlaylistAsk(own))}><Trash2 size={16} /> Delete playlist</button>
         </>
       )}
       {target.kind === "youtube" && (
         <>
           <hr />
-          <button className="menu-item menu-destructive" role="menuitem" onClick={act(() => hideYouTubeAsk(target.id, target.title))}><EyeOff size={16} /> Remove from LUMA…</button>
+          <button className="menu-item menu-destructive" role="menuitem" onClick={act(() => hideYouTubeAsk(target.id))}><EyeOff size={16} /> Remove from LUMA</button>
         </>
       )}
     </div>

@@ -92,7 +92,7 @@ export function YtPlaylistPage({ id }: { id: string }) {
       extra={
         <>
           <button className="btn" onClick={async () => { const nid = await lib.createPlaylist(p.title, p.tracks); if (nid) go({ name: "playlist", id: nid }); }}>Save to your music</button>
-          {lib.youtubePlaylists.some((y) => y.id === id) && <button className="btn danger" onClick={() => hideYouTubeAsk(id, p.title)}><EyeOff size={16} /> Remove from LUMA</button>}
+          {lib.youtubePlaylists.some((y) => y.id === id) && <button className="btn danger" onClick={() => hideYouTubeAsk(id)}><EyeOff size={16} /> Remove from LUMA</button>}
         </>
       } />
   );

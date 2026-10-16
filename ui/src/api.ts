@@ -77,11 +77,15 @@ function withKey(path: string) {
   return `${path}${path.includes("?") ? "&" : "?"}k=${encodeURIComponent(key)}`;
 }
 
+let keepalive = false;
+/** While the window closes, requests are marked to finish anyway. */
+export function setKeepalive(on: boolean) { keepalive = on; }
+
 async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
   const headers: Record<string, string> = {};
   if (key) headers["x-luma-key"] = key;
   if (body !== undefined) headers["Content-Type"] = "application/json";
-  const res = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+  const res = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), keepalive });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw Object.assign(new Error(data.error ?? `LUMA's engine answered ${res.status}`), { code: data.code as string | undefined });
   return data as T;

@@ -54,7 +54,7 @@ export function Sidebar() {
             <button key={`yt-${p.id}`} className={`side-row ${route.name === "ytplaylist" && route.id === p.id ? "is-active" : ""}`} onClick={() => go({ name: "ytplaylist", id: p.id })} title={p.title}
               aria-current={route.name === "ytplaylist" && route.id === p.id ? "page" : undefined}
               onContextMenu={openPlaylistMenu({ kind: "youtube", id: p.id, title: p.title })}
-              onKeyDown={(e) => { if (e.key === "Delete") { e.preventDefault(); hideYouTubeAsk(p.id, p.title); } }}>
+              onKeyDown={(e) => { if (e.key === "Delete") { e.preventDefault(); hideYouTubeAsk(p.id); } }}>
               {p.id === "LM" ? <span className="side-icon yt"><Heart size={15} fill="currentColor" /></span> : <Art src={p.art} size={36} />}
               <span className="side-text"><b>{p.title}</b><small>YouTube Music</small></span>
             </button>

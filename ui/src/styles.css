@@ -655,6 +655,13 @@ kbd { display: inline-block; min-width: 26px; padding: 2px 7px; border-radius: 6
 .dialog-actions { display: flex; justify-content: end; gap: 10px; margin-top: 10px; }
 .toast-wrap { position: fixed; left: 50%; bottom: 112px; transform: translateX(-50%); z-index: 70; pointer-events: none; }
 .toast { width: max-content; max-width: min(520px, calc(100vw - 48px)); padding: 11px 18px; border-radius: 16px; background: color-mix(in srgb, var(--night-2) 96%, var(--glow)); border: 1px solid var(--line-strong); font-weight: 600; line-height: 1.4; text-align: center; box-shadow: 0 12px 40px rgb(0 0 0 / 0.45); animation: toast-in 0.25s var(--ease); }
+/* A toast with an action (Undo): clickable, with a bar that runs out with its time. */
+.toast.has-action { position: relative; overflow: hidden; display: flex; align-items: center; gap: 14px; pointer-events: auto; padding-right: 8px; text-align: left; }
+.toast-action { flex: none; padding: 6px 14px; border-radius: 999px; font-weight: 700; color: var(--night); background: var(--accent); transition: transform 0.12s, background 0.15s; }
+.toast-action:hover { background: color-mix(in srgb, var(--accent) 85%, white); }
+.toast-action:active { transform: scale(0.95); }
+.toast-timer { position: absolute; left: 0; bottom: 0; height: 2px; width: 100%; background: var(--accent); transform-origin: left; animation: toast-timer 5s linear forwards; }
+@keyframes toast-timer { to { transform: scaleX(0); } }
 @keyframes toast-in { from { opacity: 0; transform: translateY(10px); } }
 
 /* ---- narrow windows --------------------------------------------------- */
