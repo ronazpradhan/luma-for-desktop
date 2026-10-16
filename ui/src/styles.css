@@ -460,10 +460,35 @@ kbd { display: inline-block; min-width: 26px; padding: 2px 7px; border-radius: 6
 .playerbar:not(.is-open) .transport { gap: 4px; }
 .playerbar:not(.is-open) .play-btn { width: 38px; height: 38px; }
 .playerbar.is-open .pb-right, .playerbar.is-open .seek, .playerbar.is-open .pb-like { animation: fade-in 0.3s 0.12s both; }
-/* Resting, a hairline along the bottom shows how far the song has played. */
-.pb-progress { position: absolute; left: 22px; right: 22px; bottom: 4px; height: 2px; border-radius: 2px; background: rgb(255 255 255 / 0.12); pointer-events: none; transition: opacity 0.25s; }
-.pb-progress::after { content: ""; position: absolute; inset: 0; transform-origin: left; transform: scaleX(var(--p, 0)); background: var(--accent); border-radius: inherit; }
-.playerbar.is-open .pb-progress { opacity: 0; }
+/* Resting, the pill fills with the song's colour as it plays: a liquid whose
+   front edge ripples (still while paused). It drains away when the player opens. */
+.pb-fluid {
+  --fluid: color-mix(in srgb, var(--accent) 50%, transparent);
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: -1;
+  width: calc(var(--p, 0) * 100%);
+  pointer-events: none;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 22%, transparent), var(--fluid));
+  background-size: 200% 100%;
+  animation: fluid-flow 7s ease-in-out infinite alternate;
+  transition: width 0.6s linear, opacity 0.35s var(--ease);
+}
+.pb-wave {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 100%;
+  width: 8px;
+  background: var(--fluid);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 32'%3E%3Cpath d='M0 0H4Q8 8 4 16T4 32H0Z'/%3E%3C/svg%3E") 0 0 / 8px 32px repeat-y;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 32'%3E%3Cpath d='M0 0H4Q8 8 4 16T4 32H0Z'/%3E%3C/svg%3E") 0 0 / 8px 32px repeat-y;
+  animation: ripple 1.6s linear infinite;
+}
+@keyframes fluid-flow { from { background-position: 0 0; } to { background-position: 100% 0; } }
+@keyframes ripple { from { -webkit-mask-position: 0 0; mask-position: 0 0; } to { -webkit-mask-position: 0 32px; mask-position: 0 32px; } }
+.pb-fluid.is-empty, .playerbar.is-open .pb-fluid { opacity: 0; }
+.playerbar.is-paused .pb-fluid, .playerbar.is-paused .pb-wave { animation-play-state: paused; }
 
 /* The sheen: light catching the glass from the top left. */
 .playerbar::before {

@@ -80,14 +80,17 @@ export function PlayerBar() {
 
   return (
     <footer
-      className={`playerbar ${open ? "is-open" : ""}`}
+      className={`playerbar ${open ? "is-open" : ""} ${p.playing ? "" : "is-paused"}`}
       aria-label="Player"
       onPointerEnter={show}
       onPointerLeave={hide}
       onFocus={show}
       onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) hide(); }}
     >
-      <span className="pb-progress" style={{ ["--p" as string]: progress }} aria-hidden />
+      {/* Resting, the pill fills with the song's colour as it plays, like liquid. */}
+      <span className={`pb-fluid ${progress > 0.002 ? "" : "is-empty"}`} style={{ ["--p" as string]: progress }} aria-hidden>
+        <span className="pb-wave" />
+      </span>
       <div className="pb-track">
         {track ? (
           <>
