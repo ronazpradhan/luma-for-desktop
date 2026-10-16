@@ -448,19 +448,7 @@ kbd { display: inline-block; min-width: 26px; padding: 2px 7px; border-radius: 6
   pointer-events: none;
   background: radial-gradient(120% 140% at 12% -40%, rgb(255 255 255 / 0.1), transparent 55%);
 }
-/* Scroll edge: songs blur and fade into the glass instead of meeting a hard line. */
-.center::after {
-  content: "";
-  position: absolute;
-  inset: auto 0 calc(var(--bar-h) + 12px);
-  height: 28px;
-  z-index: 2;
-  pointer-events: none;
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
-  -webkit-mask-image: linear-gradient(to top, #000, transparent);
-  mask-image: linear-gradient(to top, #000, transparent);
-}
+
 .pb-track { display: flex; align-items: center; gap: 14px; min-width: 0; }
 .pb-art { position: relative; border-radius: 8px; overflow: hidden; flex: none; }
 .pb-art .art { border-radius: 8px; box-shadow: 0 6px 18px rgb(0 0 0 / 0.4); }
@@ -592,6 +580,11 @@ kbd { display: inline-block; min-width: 26px; padding: 2px 7px; border-radius: 6
   transform: translateY(calc(var(--dy) * 1em)) scale(calc(var(--ds) * var(--gs)));
   box-shadow: 0 0 calc(var(--do) * 14px) rgb(255 255 255 / calc(var(--do) * 0.35));
 }
+/* Sections: a gap between stanzas, a quiet label, the chorus marked with a bar in the song's colour. */
+.lyric-section { margin-bottom: 1.4em; }
+.lyric-part { font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--haze); opacity: 0.75; margin: 0 0 4px; }
+.lyric-section.is-chorus { padding-left: 18px; border-left: 3px solid color-mix(in srgb, var(--accent) 70%, transparent); border-radius: 2px; }
+.lyric-section.is-chorus .lyric-part { color: var(--accent); opacity: 1; }
 .lyrics-plain { padding-top: 12vh; }
 .plain-line { font-size: clamp(18px, 1.7vw, 24px); font-weight: 600; color: rgb(241 232 214 / 0.85); line-height: 1.55; }
 .lyrics-note { display: flex; align-items: center; gap: 12px; color: var(--haze); font-size: 18px; }
@@ -715,7 +708,7 @@ kbd { display: inline-block; min-width: 26px; padding: 2px 7px; border-radius: 6
   .glass, .glass-raised, .center { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; background: var(--surface) !important; }
   .ambient-art { display: none; }
   .playerbar { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--surface); }
-  .playerbar::before, .center::after { display: none; }
+  .playerbar::before { display: none; }
 }
 
 @media (prefers-contrast: more) {

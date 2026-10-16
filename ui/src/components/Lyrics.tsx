@@ -4,12 +4,14 @@
 //  - the line being sung is full strength; the others dim, and lines two or
 //    more away blur a little more with each step
 //  - gaps of 3 s or more (and long intros) show three dots that fill in turn
-// LRCLIB times whole lines, so each line's time is shared across its words by
-// length. Per-frame values are written straight to CSS variables from one
+// When a provider times each word (LyricsPlus, TTML, enhanced LRC) those times
+// are used; otherwise a line's time is shared across its words by length.
+// Lines are grouped into the song's sections (Verse 1, Chorus, …), labelled,
+// with a gap between stanzas and the chorus marked. Per-frame values are written straight to CSS variables from one
 // animation-frame loop; React only re-renders when the active line changes.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { api, type Lyrics, type Track } from "../api";
+import { api, type LyricLine, type Lyrics, type Track } from "../api";
 import { playbackClock, usePlayer } from "../player";
 import { Spinner } from "./bits";
 
@@ -21,8 +23,8 @@ const BLUR_MAX = 4;
 
 type Word = { text: string; start: number; end: number };
 type Item =
-  | { kind: "line"; start: number; end: number; words: Word[]; text: string; time: number }
-  | { kind: "gap"; start: number; end: number };
+  | { kind: "line"; start: number; end: number; words: Word[]; text: string; time: number; part: number }
+  | { kind: "gap"; start: number; end: number; part: number };
 
 /** Monotone-ish curve through control points: smoothstep between neighbours. */
 function curve(points: [number, number][]) {
@@ -49,13 +51,22 @@ const DotY = curve([[0, 0], [0.9, -0.12], [1, 0]]);
 const DotOpacity = curve([[0, 0.35], [0.6, 1], [1, 1]]);
 
 /** Lines with word timings, plus interludes for long gaps. */
-export function buildItems(lines: { time: number | null; text: string }[], duration: number): Item[] {
-  const timed = lines.filter((l) => l.time != null) as { time: number; text: string }[];
+export function buildItems(lines: LyricLine[], duration: number): Item[] {
+  const timed = lines.filter((l) => l.time != null) as (LyricLine & { time: number })[];
   const out: Item[] = [];
-  if (timed.length && timed[0].time >= INTERLUDE_MIN_GAP) out.push({ kind: "gap", start: 0, end: timed[0].time - INTERLUDE_LEAD_OUT });
+  const partOf = (l?: LyricLine) => l?.part ?? 0;
+  if (timed.length && timed[0].time >= INTERLUDE_MIN_GAP) out.push({ kind: "gap", start: 0, end: timed[0].time - INTERLUDE_LEAD_OUT, part: partOf(timed[0]) });
   timed.forEach((l, i) => {
     const next = timed[i + 1]?.time ?? Math.max(l.time + 6, duration || 0);
     const span = Math.max(0.4, next - l.time);
+    // The provider's own word times, when it has them.
+    if (l.words?.length) {
+      const words = l.words.map((w) => ({ text: w.text, start: w.time, end: Math.max(w.end, w.time + 0.05) }));
+      const end = Math.max(words[words.length - 1].end, l.end ?? 0);
+      out.push({ kind: "line", start: l.time, end, words, text: l.text, time: l.time, part: partOf(l) });
+      if (next - end >= INTERLUDE_MIN_GAP && timed[i + 1]) out.push({ kind: "gap", start: end, end: next - INTERLUDE_LEAD_OUT, part: partOf(l) });
+      return;
+    }
     const raw = l.text.split(/\s+/).filter(Boolean);
     if (!raw.length) return;
     // Singing rarely fills the whole gap to the next line: about 0.1 s a letter.
@@ -68,8 +79,20 @@ export function buildItems(lines: { time: number | null; text: string }[], durat
       at += d;
       return word;
     });
-    out.push({ kind: "line", start: l.time, end: l.time + sung, words, text: l.text, time: l.time });
-    if (next - (l.time + sung) >= INTERLUDE_MIN_GAP && timed[i + 1]) out.push({ kind: "gap", start: l.time + sung, end: next - INTERLUDE_LEAD_OUT });
+    out.push({ kind: "line", start: l.time, end: l.time + sung, words, text: l.text, time: l.time, part: partOf(l) });
+    if (next - (l.time + sung) >= INTERLUDE_MIN_GAP && timed[i + 1]) out.push({ kind: "gap", start: l.time + sung, end: next - INTERLUDE_LEAD_OUT, part: partOf(l) });
+  });
+  return out;
+}
+
+/** Runs of consecutive items in the same section. */
+function sectionsOf<T extends { part?: number }>(items: T[]): { from: number; to: number; part: number }[] {
+  const out: { from: number; to: number; part: number }[] = [];
+  items.forEach((it, i) => {
+    const part = it.part ?? 0;
+    const last = out[out.length - 1];
+    if (last && last.part === part) last.to = i;
+    else out.push({ from: i, to: i, part });
   });
   return out;
 }
@@ -166,36 +189,55 @@ export function LyricsPane({ track }: { track: Track }) {
   if (lyrics === "loading") return <section className="lyrics"><div className="lyrics-note"><Spinner /> Finding lyrics</div></section>;
   if (!lyrics) return <section className="lyrics"><div className="lyrics-note">No lyrics for this song yet.</div></section>;
 
+  const parts = lyrics.parts ?? [];
+  const credit = <div className="lyrics-credit">Lyrics from {lyrics.source ?? "LRCLIB"}</div>;
+  const nameOf = (part: number) => parts[part]?.name ?? null;
+  const sectionClass = (part: number) => `lyric-section ${/chorus|hook|refrain/i.test(nameOf(part) ?? "") && !/pre/i.test(nameOf(part) ?? "") ? "is-chorus" : ""}`;
+  const label = (part: number) => (nameOf(part) ? <div className="lyric-part">{nameOf(part)}</div> : null);
+
   if (!lyrics.synced) {
+    const lines = lyrics.lines.filter((l) => l.text);
     return (
       <section className="lyrics lyrics-plain" aria-label="Lyrics">
         <div className="lyrics-hint">These lyrics aren't timed to the song.</div>
-        {lyrics.lines.map((l, i) => <p key={i} className="plain-line">{l.text || " "}</p>)}
-        <div className="lyrics-credit">Lyrics from LRCLIB or YouTube Music</div>
+        {sectionsOf(lines).map((sec) => (
+          <div key={sec.from} className={sectionClass(sec.part)}>
+            {label(sec.part)}
+            {lines.slice(sec.from, sec.to + 1).map((l, i) => <p key={i} className="plain-line">{l.text}</p>)}
+          </div>
+        ))}
+        {credit}
       </section>
+    );
+  }
+
+  function renderItem(it: Item, i: number) {
+    const distance = Math.abs(i - active);
+    const state = i === active ? "is-active" : i < active ? "is-sung" : "is-next";
+    const blur = i === active || distance <= 1 ? 0 : Math.min(BLUR_PER_LINE * (distance - 1), BLUR_MAX);
+    if (it.kind === "gap") {
+      return (
+        <div key={i} data-item={i} className={`interlude ${state}`} aria-hidden>
+          <span className="dot" /><span className="dot" /><span className="dot" />
+        </div>
+      );
+    }
+    return (
+      <p key={i} data-item={i} className={`lyric ${state}`} style={{ filter: blur ? `blur(${blur}px)` : undefined }} onClick={() => seek(it.time)}>
+        {it.words.map((w, k) => <span key={k} className="w">{w.text}</span>)}
+      </p>
     );
   }
 
   return (
     <section className="lyrics" ref={box} aria-label="Lyrics" onWheel={() => { userScrollAt.current = Date.now(); }}>
-      {items.map((it, i) => {
-        const distance = Math.abs(i - active);
-        const state = i === active ? "is-active" : i < active ? "is-sung" : "is-next";
-        const blur = i === active || distance <= 1 ? 0 : Math.min(BLUR_PER_LINE * (distance - 1), BLUR_MAX);
-        if (it.kind === "gap") {
-          return (
-            <div key={i} data-item={i} className={`interlude ${state}`} aria-hidden>
-              <span className="dot" /><span className="dot" /><span className="dot" />
-            </div>
-          );
-        }
-        return (
-          <p key={i} data-item={i} className={`lyric ${state}`} style={{ filter: blur ? `blur(${blur}px)` : undefined }} onClick={() => seek(it.time)}>
-            {it.words.map((w, k) => <span key={k} className="w">{w.text}</span>)}
-          </p>
-        );
-      })}
-      <div className="lyrics-credit">Lyrics from LRCLIB</div>
+      {sectionsOf(items).map((sec) => (
+        <div key={sec.from} className={sectionClass(sec.part)}>
+          {label(sec.part)}
+          {items.slice(sec.from, sec.to + 1).map((it, k) => renderItem(it, sec.from + k))}
+        </div>
+      ))}
+      {credit}
     </section>
   );
 }

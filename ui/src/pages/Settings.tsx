@@ -127,6 +127,7 @@ export function Settings() {
 
       <SpotifySection />
 
+      <LyricsSection />
       <section className="settings-group">
         <h2>Where songs come from</h2>
         <p>LUMA looks for each song on JioSaavn and YouTube at once and plays whichever is ready first. Connecting YouTube above helps with songs that are hard to find. Downloads are saved to the LUMA folder in your Music folder and play without internet.</p>
@@ -195,6 +196,36 @@ function AppSection() {
         </span>
         <button className="btn danger" onClick={uninstall}>Uninstall LUMA</button>
       </div>
+    </section>
+  );
+}
+
+/** Where lyrics come from, and an optional LyricsPlus server of your own. */
+function LyricsSection() {
+  const saved = useLibrary((s) => s.settings.lyricsServer ?? "");
+  const [value, setValue] = useState(saved);
+  const [problem, setProblem] = useState<string | null>(null);
+  useEffect(() => setValue(saved), [saved]);
+
+  async function save() {
+    setProblem(null);
+    try {
+      useLibrary.setState({ settings: await api.settings({ lyricsServer: value.trim() }) });
+      toast(value.trim() ? "LUMA will ask your LyricsPlus server first" : "Using the public LyricsPlus servers");
+    } catch (e) {
+      setProblem((e as Error).message);
+    }
+  }
+
+  return (
+    <section className="settings-group">
+      <h2>Lyrics</h2>
+      <p>LUMA asks LyricsPlus (YouLy+), Unison (Better Lyrics), SimpMusic, LRCLIB and KuGou, and shows the best: word-timed when it can be, grouped into verses and choruses. Lyrics are saved on this PC after the first look-up.</p>
+      <form className="actions compact" onSubmit={(e) => { e.preventDefault(); save(); }}>
+        <input className="paste" placeholder="Your own LyricsPlus server (optional), https://…" value={value} onChange={(e) => setValue(e.target.value)} spellCheck={false} aria-label="LyricsPlus server" />
+        <button className="btn" type="submit" disabled={value.trim() === saved}>Save</button>
+      </form>
+      {problem && <p className="problem">{problem}</p>}
     </section>
   );
 }

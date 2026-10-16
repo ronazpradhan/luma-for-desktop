@@ -45,7 +45,7 @@ You can see your version and check for updates yourself in **Settings → About*
 ## What it does
 
 - **Plays almost anything, fast.** Each song is looked up on JioSaavn and YouTube at once and plays from whichever is ready first, usually in under a second.
-- **Live lyrics.** Now Playing follows the song line by line. Click a line to jump to it.
+- **Live lyrics, grouped like a lyric sheet.** Verses, choruses and bridges are labelled and spaced apart, and lyrics light up word by word when the source times each word. Click a line to jump to it.
 - **Never runs out.** When your queue ends, autoplay keeps going with songs like the last one.
 - **A home that learns you.** Suggestions grow from what you play, next to YouTube Music's picks and new releases.
 - **Your library, on your PC.** Liked songs, your own playlists and your history are saved on this computer. Right-click any playlist to play, shuffle, rename or delete it.
@@ -106,6 +106,6 @@ The tag must match the version in `package.json`. The workflow tests the app, bu
 
 ## Credits
 
-Made by Ronaz Pradhan. LUMA for Android is a fork of [Stash](https://github.com/rawnaldclark/Stash) by rawnaldclark, and this app reuses its approach to matching songs on JioSaavn. Lyrics come from [LRCLIB](https://lrclib.net). YouTube playback works the way [Spotube](https://github.com/KRTirtho/spotube)'s YouTube plugin does, through [YouTube.js](https://github.com/LuanRT/YouTube.js), with [yt-dlp](https://github.com/yt-dlp/yt-dlp) as the last resort (downloaded on first use from its official releases and checked against their published checksums). Thanks to the Spotube, YouTube.js and yt-dlp teams.
+Made by Ronaz Pradhan. LUMA for Android is a fork of [Stash](https://github.com/rawnaldclark/Stash) by rawnaldclark, and this app reuses its approach to matching songs on JioSaavn. Lyrics come from [LyricsPlus](https://github.com/ibratabian17/lyricsplus) (the backend of [YouLy+](https://github.com/ibratabian17/YouLyPlus)), [Unison](https://github.com/better-lyrics/unison) (from [Better Lyrics](https://github.com/better-lyrics/better-lyrics)), [SimpMusic Lyrics](https://github.com/maxrave-dev/SimpMusic), [LRCLIB](https://lrclib.net) and KuGou. Thanks to the people who run them; LUMA keeps lyrics on your PC after the first look-up so each song is asked for once, and you can point it at your own LyricsPlus server in Settings. YouTube playback works the way [Spotube](https://github.com/KRTirtho/spotube)'s YouTube plugin does, through [YouTube.js](https://github.com/LuanRT/YouTube.js), with [yt-dlp](https://github.com/yt-dlp/yt-dlp) as the last resort (downloaded on first use from its official releases and checked against their published checksums). Thanks to the Spotube, YouTube.js and yt-dlp teams.
 
 Licensed under [GPL-3.0](LICENSE).

@@ -54,7 +54,7 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
   }
   const mobileWeb = createYtJs({ log });
   const resolver = createResolver({ saavn, ytdlp, innertube: createInnerTube({ log }), mobileWeb, youtubeAuth, tmpDir: path.join(dataDir, "bin"), log });
-  const lyrics = createLyrics({ ytmusic, version });
+  const lyrics = createLyrics({ ytmusic, version, dataDir, log, server: () => store.snapshot().settings.lyricsServer || null });
 
   // ---- Spotify: the session is kept like YouTube's, encrypted with Windows' protection.
   const spotify = createSpotify({ log });
@@ -502,6 +502,12 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
         const patch = {};
         if (typeof b.autoplay === "boolean") patch.autoplay = b.autoplay;
         if (Number.isFinite(b.volume)) patch.volume = Math.min(1, Math.max(0, b.volume));
+        // A LyricsPlus server of the listener's own (empty: YouLy+'s public ones).
+        if (typeof b.lyricsServer === "string") {
+          const v = b.lyricsServer.trim();
+          if (v && !/^https:\/\/[^\s/]+(\/[^\s]*)?$/.test(v)) throw new HttpError(400, "The lyrics server must be an https:// address.");
+          patch.lyricsServer = v.slice(0, 300);
+        }
         // YouTube Music playlists the listener removed from LUMA (their account is untouched).
         if (Array.isArray(b.hiddenYouTube)) patch.hiddenYouTube = [...new Set(b.hiddenYouTube.filter((x) => typeof x === "string" && /^[\w-]{1,80}$/.test(x)))].slice(0, 500);
         return send(res, 200, store.setSettings(patch));

@@ -28,9 +28,11 @@ export type Library = {
   playlists: Playlist[];
   history: { track: Track; at: number }[];
   downloads: Record<string, { track: Track; at: number; size: number }>;
-  settings: { autoplay: boolean; volume: number; hiddenYouTube?: string[] };
+  settings: { autoplay: boolean; volume: number; hiddenYouTube?: string[]; lyricsServer?: string };
 };
-export type Lyrics = { synced: boolean; lines: { time: number | null; text: string }[] } | null;
+export type LyricLine = { time: number | null; end?: number; text: string; words?: { text: string; time: number; end: number }[]; part?: number };
+/** Lyrics as the engine gives them: lines (timed, maybe word by word) in sections such as Verse 1 or Chorus. */
+export type Lyrics = { synced: boolean; wordSynced?: boolean; source?: string; lines: LyricLine[]; parts?: { name: string | null }[] } | null;
 export type Resolved = { source: "jiosaavn" | "youtube" | "download"; codec: string; kbps?: number | null };
 export type DownloadState = Record<string, { state: "running" | "done" | "failed"; progress: number; error?: string }>;
 
