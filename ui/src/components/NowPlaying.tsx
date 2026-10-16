@@ -6,7 +6,7 @@ import { useNav } from "../nav";
 import { usePlayer } from "../player";
 import { Art, DownloadGlyph, DownloadedBadge } from "./bits";
 import { LyricsPane } from "./Lyrics";
-import { Seek, Transport } from "./PlayerBar";
+import { Seek, Transport, VolumeControl } from "./PlayerBar";
 
 /** Full-window player: the art large on the left, lyrics that follow the song on the right. */
 export function NowPlaying() {
@@ -42,6 +42,7 @@ export function NowPlaying() {
       <header className="np-top">
         <button className="icon-btn round" onClick={() => setOpen(false)} aria-label="Close Now Playing" title="Close Now Playing"><ChevronDown size={22} /></button>
         <span className="np-from">{sourceLabel ? `Playing from ${sourceLabel}` : ""}</span>
+        <VolumeControl />
         <button className={`icon-btn round ${queueOpen ? "is-on" : ""}`} onClick={() => setQueueOpen(!queueOpen)} aria-label="Queue" title="Queue"><ListMusic size={20} /></button>
       </header>
       <div className="np-body">

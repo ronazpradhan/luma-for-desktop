@@ -1,5 +1,5 @@
-import { Heart, ListMusic, Maximize2, Mic2, Pause, Play, Repeat, Repeat1, Shuffle, SkipBack, SkipForward, Volume1, Volume2, VolumeX } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Heart, Maximize2, Pause, Play, Repeat, Repeat1, Shuffle, SkipBack, SkipForward, Volume1, Volume2, VolumeX } from "lucide-react";
+import { useState } from "react";
 import { formatTime } from "../api";
 import { useLibrary } from "../library";
 import { useNav } from "../nav";
@@ -59,6 +59,18 @@ export function Transport({ big = false }: { big?: boolean }) {
   );
 }
 
+/** Mute and a volume slider (in Now Playing). */
+export function VolumeControl() {
+  const p = usePlayer();
+  const VolIcon = p.muted || p.volume === 0 ? VolumeX : p.volume < 0.5 ? Volume1 : Volume2;
+  return (
+    <div className="volume-control">
+      <button className="icon-btn" onClick={p.toggleMute} aria-label={p.muted ? "Unmute" : "Mute"} title={p.muted ? "Unmute" : "Mute"}><VolIcon size={18} /></button>
+      <input type="range" className="range volume" min={0} max={1} step={0.01} value={p.muted ? 0 : p.volume} style={{ ["--fill" as string]: `${(p.muted ? 0 : p.volume) * 100}%` }} onChange={(e) => p.setVolume(Number(e.target.value))} aria-label="Volume" />
+    </div>
+  );
+}
+
 export function PlayerBar() {
   const p = usePlayer();
   const track = p.current();
@@ -67,27 +79,13 @@ export function PlayerBar() {
   const liked = track ? lib.isLiked(track.id) : false;
   const dl = track ? lib.downloadState[track.id] : undefined;
   const downloaded = track ? !!lib.downloads[track.id] : false;
-  const VolIcon = p.muted || p.volume === 0 ? VolumeX : p.volume < 0.5 ? Volume1 : Volume2;
-
-  // A small pill until you reach for it: hovering (or tabbing into it) opens
-  // the full player, which waits a moment before shrinking back.
-  const [open, setOpen] = useState(false);
-  const closing = useRef<number | undefined>(undefined);
-  const show = () => { clearTimeout(closing.current); setOpen(true); };
-  const hide = () => { clearTimeout(closing.current); closing.current = window.setTimeout(() => setOpen(false), 700); };
-  useEffect(() => () => clearTimeout(closing.current), []);
   const progress = p.duration ? Math.min(1, p.position / p.duration) : 0;
 
+  // Always the small pill: the song, like, download and play controls. The
+  // rest (seek, queue, lyrics, volume) is one click away in Now Playing.
   return (
-    <footer
-      className={`playerbar ${open ? "is-open" : ""} ${p.playing ? "" : "is-paused"}`}
-      aria-label="Player"
-      onPointerEnter={show}
-      onPointerLeave={hide}
-      onFocus={show}
-      onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) hide(); }}
-    >
-      {/* Resting, the pill fills with the song's colour as it plays, like liquid. */}
+    <footer className={`playerbar ${p.playing ? "" : "is-paused"}`} aria-label="Player">
+      {/* The pill fills with the song's colour as it plays, like liquid. */}
       <span className={`pb-fluid ${progress > 0.002 ? "" : "is-empty"}`} style={{ ["--p" as string]: progress }} aria-hidden>
         <span className="pb-wave" />
       </span>
@@ -95,45 +93,37 @@ export function PlayerBar() {
         {track ? (
           <>
             <button key={track.id} className="pb-art" onClick={() => p.setNowPlaying(true)} aria-label="Open Now Playing" title="Open Now Playing">
-              <Art src={track.art} size={56} />
-              <span className="pb-expand"><Maximize2 size={16} /></span>
+              <Art src={track.art} size={44} />
+              <span className="pb-expand"><Maximize2 size={14} /></span>
             </button>
             <div key={`t-${track.id}`} className="pb-text">
-              <button className="pb-title" onClick={() => p.setNowPlaying(true)}>{track.title}</button>
+              <button className="pb-title" onClick={() => p.setNowPlaying(true)} title="Open Now Playing">{track.title}</button>
               <div className="pb-artist">
                 {track.artistId ? <button className="link" onClick={() => go({ name: "artist", id: track.artistId! })}>{track.artist}</button> : track.artist}
               </div>
             </div>
-            <button className={`icon-btn pb-like ${liked ? "is-on" : ""}`} onClick={() => lib.toggleLike(track)} aria-label={liked ? "Remove from Liked songs" : "Add to Liked songs"} title={liked ? "Remove from Liked songs" : "Add to Liked songs"} aria-pressed={liked}>
-              <Heart size={18} fill={liked ? "currentColor" : "none"} />
-            </button>
           </>
         ) : (
           <div className="pb-idle">Pick a song to start</div>
         )}
       </div>
-      <div className="pb-center">
-        <Transport />
-        <Seek />
-      </div>
-      <div className="pb-right">
+      <div className="pb-controls">
         {track && (
-          dl?.state === "running" ? (
-            <span className="dl-ring big" style={{ ["--p" as string]: dl.progress }} aria-label="Downloading" />
-          ) : (
-            downloaded ? (
-              <span className="downloaded-slot"><DownloadedBadge size={20} label="Downloaded: plays without internet" /></span>
+          <>
+            <button className={`icon-btn pb-like ${liked ? "is-on" : ""}`} onClick={() => lib.toggleLike(track)} aria-label={liked ? "Remove from Liked songs" : "Add to Liked songs"} title={liked ? "Remove from Liked songs" : "Add to Liked songs"} aria-pressed={liked}>
+              <Heart size={17} fill={liked ? "currentColor" : "none"} />
+            </button>
+            {dl?.state === "running" ? (
+              <span className="downloaded-slot"><span className="dl-ring big" style={{ ["--p" as string]: dl.progress }} aria-label="Downloading" /></span>
+            ) : downloaded ? (
+              <span className="downloaded-slot"><DownloadedBadge size={18} label="Downloaded: plays without internet" /></span>
             ) : (
-              <button className="icon-btn" onClick={() => lib.download([track])} aria-label="Download" title="Download">
-                <DownloadGlyph size={19} />
-              </button>
-            )
-          )
+              <button className="icon-btn" onClick={() => lib.download([track])} aria-label="Download" title="Download"><DownloadGlyph size={17} /></button>
+            )}
+            <span className="pb-sep" aria-hidden />
+          </>
         )}
-        <button className={`icon-btn ${p.nowPlayingOpen ? "is-on" : ""}`} onClick={() => p.setNowPlaying(!p.nowPlayingOpen)} aria-label="Lyrics" title="Lyrics" disabled={!track}><Mic2 size={18} /></button>
-        <button className={`icon-btn ${p.queueOpen ? "is-on" : ""}`} onClick={() => p.setQueueOpen(!p.queueOpen)} aria-label="Queue" title="Queue"><ListMusic size={18} /></button>
-        <button className="icon-btn" onClick={p.toggleMute} aria-label={p.muted ? "Unmute" : "Mute"} title={p.muted ? "Unmute" : "Mute"}><VolIcon size={18} /></button>
-        <input type="range" className="range volume" min={0} max={1} step={0.01} value={p.muted ? 0 : p.volume} style={{ ["--fill" as string]: `${(p.muted ? 0 : p.volume) * 100}%` }} onChange={(e) => p.setVolume(Number(e.target.value))} aria-label="Volume" />
+        <Transport />
       </div>
     </footer>
   );

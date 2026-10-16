@@ -416,8 +416,8 @@ kbd { display: inline-block; min-width: 26px; padding: 2px 7px; border-radius: 6
   right: var(--pb-right);
   bottom: 20px;
   margin-inline: auto;
-  /* Resting: a small pill with the song, play/pause and skip. */
-  width: min(440px, calc(100vw - var(--pb-left) - var(--pb-right) - 24px));
+  /* A small pill: the song, like, download and play controls. */
+  width: min(500px, calc(100vw - var(--pb-left) - var(--pb-right) - 24px));
   height: 60px;
   z-index: 5;
   border-radius: 30px;
@@ -441,25 +441,17 @@ kbd { display: inline-block; min-width: 26px; padding: 2px 7px; border-radius: 6
     inset 0 -1px 0 rgb(0 0 0 / 0.25),
     0 18px 44px rgb(0 0 0 / 0.42);
 }
-/* Open (hovered or focused): the whole player. */
-.playerbar.is-open {
-  width: min(880px, calc(100vw - var(--pb-left) - var(--pb-right) - 24px));
-  height: var(--bar-h);
-  border-radius: var(--radius-panel);
-  grid-template-columns: minmax(0, 1fr) minmax(360px, 1.3fr) minmax(0, 1fr);
-  gap: 16px;
-  padding: 0 16px 0 12px;
-}
-.playerbar:not(.is-open) .pb-right,
-.playerbar:not(.is-open) .pb-like,
-.playerbar:not(.is-open) .seek,
-.playerbar:not(.is-open) .transport > :first-child,
-.playerbar:not(.is-open) .transport > :last-child { display: none; }
-.playerbar:not(.is-open) .pb-art .art { width: 44px !important; height: 44px !important; border-radius: 50%; }
-.playerbar:not(.is-open) .pb-track { gap: 10px; }
-.playerbar:not(.is-open) .transport { gap: 4px; }
-.playerbar:not(.is-open) .play-btn { width: 38px; height: 38px; }
-.playerbar.is-open .pb-right, .playerbar.is-open .seek, .playerbar.is-open .pb-like { animation: fade-in 0.3s 0.12s both; }
+.playerbar .transport > :first-child,
+.playerbar .transport > :last-child { display: none; }
+.playerbar .pb-art .art { width: 44px !important; height: 44px !important; border-radius: 50%; }
+.playerbar .pb-track { gap: 10px; }
+.playerbar .transport { gap: 4px; }
+.playerbar .play-btn { width: 38px; height: 38px; }
+.pb-controls { display: flex; align-items: center; gap: 2px; }
+.pb-controls .downloaded-slot { width: 34px; height: 34px; }
+.pb-sep { width: 1px; height: 22px; margin: 0 6px; background: rgb(255 255 255 / 0.12); }
+.volume-control { display: flex; align-items: center; gap: 4px; }
+
 /* Resting, the pill fills with the song's colour as it plays: a liquid whose
    front edge ripples (still while paused). It drains away when the player opens. */
 .pb-fluid {
@@ -487,7 +479,7 @@ kbd { display: inline-block; min-width: 26px; padding: 2px 7px; border-radius: 6
 }
 @keyframes fluid-flow { from { background-position: 0 0; } to { background-position: 100% 0; } }
 @keyframes ripple { from { -webkit-mask-position: 0 0; mask-position: 0 0; } to { -webkit-mask-position: 0 32px; mask-position: 0 32px; } }
-.pb-fluid.is-empty, .playerbar.is-open .pb-fluid { opacity: 0; }
+.pb-fluid.is-empty { opacity: 0; }
 .playerbar.is-paused .pb-fluid, .playerbar.is-paused .pb-wave { animation-play-state: paused; }
 
 /* The sheen: light catching the glass from the top left. */
@@ -511,8 +503,6 @@ kbd { display: inline-block; min-width: 26px; padding: 2px 7px; border-radius: 6
 .pb-title:hover { text-decoration: underline; }
 .pb-artist { color: var(--haze); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pb-idle { color: var(--haze); padding-left: 8px; }
-.pb-center { display: grid; gap: 2px; justify-items: center; }
-.pb-right { display: flex; align-items: center; justify-content: end; gap: 2px; }
 .volume { width: 96px; }
 
 .transport { display: flex; align-items: center; gap: 10px; }
@@ -676,9 +666,6 @@ kbd { display: inline-block; min-width: 26px; padding: 2px 7px; border-radius: 6
   .row { grid-template-columns: 32px 40px minmax(0, 1fr) auto; }
   .row-album { display: none; }
   .playerbar, .app.with-queue .playerbar { --pb-left: calc(76px + 16px); --pb-right: 8px; }
-  .playerbar.is-open { grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; }
-  .pb-center .seek { display: none; }
-  .volume { display: none; }
   .np-body { grid-template-columns: 1fr; padding: 0 28px 24px; }
   .np-body .lyrics { display: none; }
   .np-left { justify-self: center; }
