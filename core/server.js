@@ -207,7 +207,8 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
   /** Quick picks: your most-played songs mixed with songs like them, new each day ([fresh]: new now). */
   async function forYou(fresh = false) {
     const d = store.snapshot();
-    const songs = songScores(d.plays, d.likes);
+    // Your current vibe: what you've played lately weighs far more than old phases.
+    const songs = songScores(d.plays, d.likes, Date.now(), 4);
     if (!songs.length) {
       const home = await ytmusic.home();
       const list = home.flatMap((s) => s.items.filter((i) => i.kind === "song"));

@@ -5,17 +5,21 @@
 const DAY = 86_400_000;
 const HALF_LIFE_DAYS = 21;
 
-/** How much a song is "yours": plays, fading over weeks, plus a lift for liked songs. */
-export function songScores(plays, likes, now = Date.now()) {
+/**
+ * How much a song is "yours": plays, fading with age, plus a lift for liked
+ * songs. A short [halfLifeDays] follows the vibe you're in now; a long one,
+ * your all-time taste.
+ */
+export function songScores(plays, likes, now = Date.now(), halfLifeDays = HALF_LIFE_DAYS) {
   const scores = new Map();
   for (const [id, p] of Object.entries(plays ?? {})) {
     const age = Math.max(0, (now - p.last) / DAY);
-    scores.set(id, { track: p.track, score: p.n * 0.5 ** (age / HALF_LIFE_DAYS) });
+    scores.set(id, { track: p.track, score: p.n * 0.5 ** (age / halfLifeDays) });
   }
   for (const t of likes ?? []) {
     const s = scores.get(t.id);
-    if (s) s.score += 1.5;
-    else scores.set(t.id, { track: t, score: 1 });
+    if (s) s.score += 0.5;
+    else scores.set(t.id, { track: t, score: 0.2 });
   }
   return [...scores.values()].sort((a, b) => b.score - a.score);
 }

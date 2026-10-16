@@ -53,26 +53,26 @@ function Results({ q }: { q: string }) {
   );
 }
 
-/** Moods and genres to start from: each card runs its search. */
+/** Moods to start from (a vibe, not a country or language): each card runs its search. */
 const CATEGORIES: { label: string; q: string; from: string; to: string }[] = [
-  { label: "Bollywood hits", q: "Bollywood hits", from: "#e8475f", to: "#8a1f6b" },
-  { label: "Punjabi", q: "Punjabi hits", from: "#f59f2b", to: "#c2410c" },
-  { label: "Nepali", q: "Nepali songs", from: "#e23b3b", to: "#1e3a8a" },
-  { label: "Pop", q: "Pop hits", from: "#ec4899", to: "#7c3aed" },
-  { label: "Hip-hop", q: "Hip hop", from: "#475569", to: "#0f172a" },
-  { label: "Lo-fi", q: "Lofi", from: "#6366f1", to: "#312e81" },
-  { label: "Romantic", q: "Romantic songs", from: "#f43f5e", to: "#9f1239" },
-  { label: "Sad songs", q: "Sad songs", from: "#3b82f6", to: "#1e3a5f" },
-  { label: "Party", q: "Party songs", from: "#d946ef", to: "#6b21a8" },
-  { label: "Workout", q: "Workout music", from: "#22c55e", to: "#14532d" },
-  { label: "Chill", q: "Chill songs", from: "#14b8a6", to: "#134e4a" },
-  { label: "Indie", q: "Indie songs", from: "#a3a635", to: "#4d5114" },
-  { label: "Rock", q: "Rock songs", from: "#b91c1c", to: "#27272a" },
-  { label: "K-pop", q: "K-pop", from: "#f472b6", to: "#4f46e5" },
-  { label: "Sufi", q: "Sufi songs", from: "#d4a017", to: "#6b4410" },
-  { label: "90s Bollywood", q: "90s Bollywood songs", from: "#fb7185", to: "#7c2d12" },
-  { label: "Acoustic", q: "Acoustic songs", from: "#a16207", to: "#422006" },
-  { label: "EDM", q: "EDM", from: "#06b6d4", to: "#3730a3" },
+  { label: "Late night", q: "late night vibes songs", from: "#4338ca", to: "#1e1b4b" },
+  { label: "Feel good", q: "feel good songs", from: "#f59e0b", to: "#c2410c" },
+  { label: "Heartbreak", q: "heartbreak songs", from: "#3b82f6", to: "#1e3a5f" },
+  { label: "Chill", q: "chill songs", from: "#14b8a6", to: "#134e4a" },
+  { label: "Focus", q: "focus music", from: "#64748b", to: "#1e293b" },
+  { label: "Workout", q: "workout songs", from: "#22c55e", to: "#14532d" },
+  { label: "Party", q: "party songs", from: "#d946ef", to: "#6b21a8" },
+  { label: "Romance", q: "love songs", from: "#f43f5e", to: "#9f1239" },
+  { label: "Rainy day", q: "rainy day songs", from: "#60a5fa", to: "#334155" },
+  { label: "Road trip", q: "road trip songs", from: "#fb923c", to: "#7c2d12" },
+  { label: "Dreamy", q: "dreamy songs", from: "#c084fc", to: "#4c1d95" },
+  { label: "Lo-fi", q: "lofi beats", from: "#6366f1", to: "#312e81" },
+  { label: "Hype", q: "hype songs", from: "#ef4444", to: "#450a0a" },
+  { label: "Acoustic", q: "acoustic songs", from: "#a16207", to: "#422006" },
+  { label: "Indie", q: "indie songs", from: "#a3a635", to: "#4d5114" },
+  { label: "Throwbacks", q: "throwback songs", from: "#fb7185", to: "#7c2d12" },
+  { label: "Sleep", q: "sleep music", from: "#1e40af", to: "#0b1023" },
+  { label: "Sad hours", q: "sad songs", from: "#475569", to: "#0f172a" },
 ];
 
 function SearchStart() {

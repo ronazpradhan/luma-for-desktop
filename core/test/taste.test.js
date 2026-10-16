@@ -77,3 +77,12 @@ test("plays are counted, and old libraries start from their history", async () =
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+test("quick picks follow the vibe you're in now, not an old phase", () => {
+  const plays = {
+    oldPhase: { n: 30, last: now - 30 * DAY, track: t("oldPhase", "Old phase artist") },
+    thisWeek: { n: 3, last: now - 1 * DAY, track: t("thisWeek", "Current artist") },
+  };
+  assert.equal(songScores(plays, [], now, 4)[0].track.id, "thisWeek");
+  assert.equal(songScores(plays, [], now)[0].track.id, "oldPhase"); // all-time taste still remembers it
+});
