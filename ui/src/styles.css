@@ -62,21 +62,55 @@ h1, h2, h3, p { margin: 0; }
 
 /* ---- the light -------------------------------------------------------- */
 
+/* The background is the playing song: its artwork, huge, blurred and slowly
+   drifting, with its colour glowing over it and a veil that keeps text legible. */
 .ambient {
   position: fixed;
   inset: 0;
   z-index: -1; /* behind everything, or it paints over in-flow text */
   pointer-events: none;
+  overflow: hidden;
+  background: var(--night);
+}
+.ambient-art {
+  position: absolute;
+  inset: -20%;
+  background-size: cover;
+  background-position: center;
+  filter: blur(70px) saturate(170%) brightness(0.62);
+  animation: ambient-in 1.6s var(--ease) backwards, drift 40s ease-in-out infinite alternate;
+  transition: opacity 1.6s var(--ease);
+}
+.ambient-art.is-out { opacity: 0; }
+@keyframes ambient-in { from { opacity: 0; } }
+@keyframes drift {
+  from { transform: scale(1.05) rotate(0deg) translate(0, 0); }
+  to { transform: scale(1.25) rotate(8deg) translate(-3%, 2%); }
+}
+.ambient-light {
+  position: absolute;
+  inset: 0;
   background:
-    radial-gradient(70% 60% at 14% -8%, color-mix(in srgb, var(--glow) 55%, transparent), transparent 70%),
-    radial-gradient(60% 55% at 96% 108%, color-mix(in srgb, var(--glow) 28%, transparent), transparent 70%),
-    radial-gradient(40% 35% at 70% 20%, color-mix(in srgb, var(--glow) 12%, transparent), transparent 70%),
-    var(--night);
+    radial-gradient(70% 60% at 14% -8%, color-mix(in srgb, var(--glow) 50%, transparent), transparent 70%),
+    radial-gradient(60% 55% at 96% 108%, color-mix(in srgb, var(--glow) 34%, transparent), transparent 70%),
+    linear-gradient(rgb(10 9 15 / 0.38), rgb(10 9 15 / 0.58));
 }
 
-.surface {
-  background: var(--surface);
-  border: 1px solid var(--line);
+/* Glass: panels blur and lift the moving background behind them. */
+.glass {
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.06), rgb(255 255 255 / 0.015) 40%), rgb(14 12 22 / 0.42);
+  -webkit-backdrop-filter: blur(30px) saturate(160%);
+  backdrop-filter: blur(30px) saturate(160%);
+  border: 1px solid rgb(255 255 255 / 0.09);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.1), 0 10px 30px rgb(0 0 0 / 0.25);
+}
+/* Raised glass for menus, dialogs, toasts and suggestions: thicker, so text over busy pages reads. */
+.glass-raised {
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0.02) 45%), rgb(20 17 30 / 0.72) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  backdrop-filter: blur(28px) saturate(160%);
+  border: 1px solid rgb(255 255 255 / 0.12) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), 0 20px 60px rgb(0 0 0 / 0.5) !important;
 }
 
 /* ---- frame ------------------------------------------------------------ */
@@ -138,9 +172,13 @@ h1, h2, h3, p { margin: 0; }
   display: flex;
   flex-direction: column;
   border-radius: var(--radius-panel);
-  background: rgb(14 13 19 / 0.38);
-  border: 1px solid var(--line);
   overflow: hidden;
+  /* Glass, a touch thinner than the sidebar: the page is the big surface. */
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.05), rgb(255 255 255 / 0.01) 30%), rgb(12 10 18 / 0.36);
+  -webkit-backdrop-filter: blur(30px) saturate(150%);
+  backdrop-filter: blur(30px) saturate(150%);
+  border: 1px solid rgb(255 255 255 / 0.09);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08);
 }
 /* The title strip: Windows' window buttons sit at its right end (the window's
    title bar overlay is the same height), never over the page. */
@@ -336,7 +374,7 @@ h1, h2, h3, p { margin: 0; }
 .empty h3 { color: var(--moon); font-size: 17px; }
 .empty p { max-width: 44ch; }
 
-.settings-group { border-radius: var(--radius-panel); padding: 20px 22px; margin-bottom: 14px; display: grid; gap: 10px; background: rgb(255 255 255 / 0.04); border: 1px solid var(--line); }
+.settings-group { border-radius: var(--radius-panel); padding: 20px 22px; margin-bottom: 14px; display: grid; gap: 10px; background: rgb(255 255 255 / 0.05); border: 1px solid rgb(255 255 255 / 0.08); }
 .actions.compact { margin: 4px 0 0; }
 .steps { margin: 2px 0 0; padding-left: 20px; display: grid; gap: 6px; color: var(--moon); line-height: 1.5; }
 .steps li::marker { color: var(--accent); font-weight: 700; }
@@ -620,6 +658,39 @@ kbd { display: inline-block; min-width: 26px; padding: 2px 7px; border-radius: 6
 .seek { position: relative; }
 .seek-tip { position: absolute; bottom: 20px; transform: translateX(-50%); padding: 3px 8px; border-radius: 7px; background: var(--surface-raised); border: 1px solid var(--line); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; pointer-events: none; white-space: nowrap; box-shadow: 0 6px 20px rgb(0 0 0 / 0.4); }
 
+/* Search: mood and genre cards. */
+.category-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px; }
+.category {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 16 / 10;
+  padding: 16px 18px;
+  border-radius: var(--radius-card);
+  text-align: left;
+  display: flex;
+  align-items: flex-start;
+  background: linear-gradient(135deg, var(--from), var(--to));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.18), 0 10px 26px rgb(0 0 0 / 0.3);
+  transition: transform 0.18s var(--ease), box-shadow 0.18s;
+}
+.category span { position: relative; font-size: 20px; font-weight: 800; letter-spacing: -0.01em; line-height: 1.15; color: #fff; text-shadow: 0 2px 12px rgb(0 0 0 / 0.25); }
+/* A glossy disc in the corner, like a record catching the light. */
+.category::after {
+  content: "";
+  position: absolute;
+  right: -18%;
+  bottom: -38%;
+  width: 62%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, rgb(255 255 255 / 0.35), rgb(255 255 255 / 0.06) 45%, transparent 46%), radial-gradient(circle, rgb(0 0 0 / 0.0) 18%, rgb(0 0 0 / 0.22) 19%, rgb(0 0 0 / 0.22) 70%, transparent 71%);
+  transform: rotate(-12deg);
+  transition: transform 0.4s var(--ease);
+}
+.category:hover { transform: translateY(-3px); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.22), 0 16px 34px rgb(0 0 0 / 0.38); }
+.category:hover::after { transform: rotate(20deg) scale(1.05); }
+.category:active { transform: scale(0.98); }
+
 .top-result { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 28px; margin-bottom: 40px; }
 .top-card { position: relative; display: grid; gap: 14px; padding: 22px; border-radius: var(--radius-panel); background: rgb(255 255 255 / 0.06); border: 1px solid var(--line); text-align: left; transition: background 0.2s; min-width: 0; }
 .top-card:hover { background: rgb(255 255 255 / 0.1); }
@@ -636,6 +707,8 @@ kbd { display: inline-block; min-width: 26px; padding: 2px 7px; border-radius: 6
 /* More contrast: brighter secondary text, firmer edges. */
 /* Transparency off: the player bar turns solid. */
 @media (prefers-reduced-transparency: reduce) {
+  .glass, .glass-raised, .center { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; background: var(--surface) !important; }
+  .ambient-art { display: none; }
   .playerbar { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--surface); }
   .playerbar::before, .center::after { display: none; }
 }
@@ -653,4 +726,8 @@ kbd { display: inline-block; min-width: 26px; padding: 2px 7px; border-radius: 6
   .icon-btn, .btn, .play-btn, .row, .side-row, .nav-item, .tile, .quick { border: 1px solid ButtonText; forced-color-adjust: auto; }
   .row-like, .row-more, .tile-play, .q-remove, .pb-expand { opacity: 1; }
   .range::-webkit-slider-runnable-track { background: ButtonText; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ambient-art { animation: none; transform: scale(1.1); }
 }

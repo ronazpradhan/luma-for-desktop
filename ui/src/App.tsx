@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTint } from "./color";
 import { NowPlaying } from "./components/NowPlaying";
+import { Ambient } from "./components/Ambient";
 import { PlayerBar } from "./components/PlayerBar";
 import { QueuePanel } from "./components/QueuePanel";
 import { Sidebar } from "./components/Sidebar";
@@ -79,7 +80,7 @@ export function App() {
 
   return (
     <div className={`app ${queueOpen ? "with-queue" : ""}`}>
-      <div className="ambient" aria-hidden />
+      <Ambient art={track?.art} />
       <Sidebar />
       <TopBar />
       <div className={`center ${scrolled ? "is-scrolled" : ""}`}>

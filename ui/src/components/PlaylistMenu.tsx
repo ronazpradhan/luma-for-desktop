@@ -134,7 +134,7 @@ export function PlaylistMenu() {
   const empty = own ? own.tracks.length === 0 : target.kind === "liked" ? lib.likes.length === 0 : target.kind === "downloads" ? Object.keys(lib.downloads).length === 0 : false;
 
   return (
-    <div ref={ref} className="menu" style={pos} role="menu" aria-label={name}>
+    <div ref={ref} className="menu glass-raised" style={pos} role="menu" aria-label={name}>
       <button className="menu-item" role="menuitem" disabled={empty} onClick={withTracks((t) => player.playList(t, 0, name))}><Play size={16} /> Play</button>
       <button className="menu-item" role="menuitem" disabled={empty} onClick={withTracks((t) => player.playList(shuffled(t), 0, name))}><Shuffle size={16} /> Shuffle</button>
       <button className="menu-item" role="menuitem" disabled={empty} onClick={withTracks((t) => player.addToQueue(t))}><ListEnd size={16} /> Add to queue</button>

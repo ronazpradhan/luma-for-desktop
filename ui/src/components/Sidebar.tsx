@@ -24,7 +24,7 @@ export function Sidebar() {
   );
 
   return (
-    <aside className="sidebar surface">
+    <aside className="sidebar glass">
       <div className="brand">
         <img src="./logo.svg" alt="" width={30} height={30} />
         <span>LUMA</span>

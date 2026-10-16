@@ -53,7 +53,7 @@ export function TrackMenu() {
   const downloaded = !!lib.downloads[track.id];
 
   return (
-    <div ref={ref} className="menu" style={pos} role="menu">
+    <div ref={ref} className="menu glass-raised" style={pos} role="menu">
       {picking ? (
         <>
           <button className="menu-item" role="menuitem" onClick={act(async () => { const id = await lib.createPlaylist("New playlist", [track]); if (id) go({ name: "playlist", id }); })}>

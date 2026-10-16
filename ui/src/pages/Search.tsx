@@ -4,7 +4,7 @@ import { Art, Empty, Failed, SkeletonRows, SkeletonShelf } from "../components/b
 import { coolOnLeave, usePlayer, warmOnHover } from "../player";
 import { Shelf } from "../components/Shelf";
 import { TrackList } from "../components/TrackList";
-import { useLibrary } from "../library";
+import { useNav } from "../nav";
 import { useAsync } from "./common";
 
 export function Search({ q }: { q?: string }) {
@@ -53,20 +53,46 @@ function Results({ q }: { q: string }) {
   );
 }
 
+/** Moods and genres to start from: each card runs its search. */
+const CATEGORIES: { label: string; q: string; from: string; to: string }[] = [
+  { label: "Bollywood hits", q: "Bollywood hits", from: "#e8475f", to: "#8a1f6b" },
+  { label: "Punjabi", q: "Punjabi hits", from: "#f59f2b", to: "#c2410c" },
+  { label: "Nepali", q: "Nepali songs", from: "#e23b3b", to: "#1e3a8a" },
+  { label: "Pop", q: "Pop hits", from: "#ec4899", to: "#7c3aed" },
+  { label: "Hip-hop", q: "Hip hop", from: "#475569", to: "#0f172a" },
+  { label: "Lo-fi", q: "Lofi", from: "#6366f1", to: "#312e81" },
+  { label: "Romantic", q: "Romantic songs", from: "#f43f5e", to: "#9f1239" },
+  { label: "Sad songs", q: "Sad songs", from: "#3b82f6", to: "#1e3a5f" },
+  { label: "Party", q: "Party songs", from: "#d946ef", to: "#6b21a8" },
+  { label: "Workout", q: "Workout music", from: "#22c55e", to: "#14532d" },
+  { label: "Chill", q: "Chill songs", from: "#14b8a6", to: "#134e4a" },
+  { label: "Indie", q: "Indie songs", from: "#a3a635", to: "#4d5114" },
+  { label: "Rock", q: "Rock songs", from: "#b91c1c", to: "#27272a" },
+  { label: "K-pop", q: "K-pop", from: "#f472b6", to: "#4f46e5" },
+  { label: "Sufi", q: "Sufi songs", from: "#d4a017", to: "#6b4410" },
+  { label: "90s Bollywood", q: "90s Bollywood songs", from: "#fb7185", to: "#7c2d12" },
+  { label: "Acoustic", q: "Acoustic songs", from: "#a16207", to: "#422006" },
+  { label: "EDM", q: "EDM", from: "#06b6d4", to: "#3730a3" },
+];
+
 function SearchStart() {
-  const history = useLibrary((s) => s.history);
+  const go = useNav((s) => s.go);
   return (
     <div className="page">
       <header className="page-hero">
         <h1 className="hello">Search</h1>
-        <p className="hero-sub">Type in the box above. Ctrl+K gets you there from anywhere.</p>
+        <p className="hero-sub">Type in the box above, or start from a mood. Ctrl+K gets you to search from anywhere.</p>
       </header>
-      {history.length > 0 && (
-        <section className="block">
-          <h2 className="block-title">Played recently</h2>
-          <TrackList tracks={history.slice(0, 12).map((h) => h.track)} single />
-        </section>
-      )}
+      <section className="block">
+        <h2 className="block-title">Browse all</h2>
+        <div className="category-grid">
+          {CATEGORIES.map((c) => (
+            <button key={c.label} className="category" style={{ ["--from" as string]: c.from, ["--to" as string]: c.to }} onClick={() => go({ name: "search", q: c.q })}>
+              <span>{c.label}</span>
+            </button>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }

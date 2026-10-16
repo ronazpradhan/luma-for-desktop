@@ -73,7 +73,7 @@ export function TopBar() {
         />
         {text && <button type="button" className="icon-btn" aria-label="Clear search" title="Clear search" onClick={() => { setText(""); input.current?.focus(); }}><X size={16} /></button>}
         {open && suggestions.length > 0 && (
-          <ul className="suggest" role="listbox">
+          <ul className="suggest glass-raised" role="listbox">
             {suggestions.map((s, i) => (
               <li key={s} role="option" aria-selected={i === active}>
                 <button type="button" className={i === active ? "is-active" : ""} onMouseDown={(e) => { e.preventDefault(); submit(s); }}>
