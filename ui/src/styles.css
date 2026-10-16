@@ -81,21 +81,26 @@ h1, h2, h3, p { margin: 0; }
 
 /* ---- frame ------------------------------------------------------------ */
 
+/* Frame: a title strip across the top (back, search, and Windows' own window
+   buttons), the sidebar down the left, the page below the strip, and the
+   player floating, centred, over the bottom of the page. */
 .app {
+  --strip-h: 52px;
   position: relative;
   height: 100vh;
   display: grid;
   grid-template-columns: 268px minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr) auto;
-  gap: 8px;
-  padding: 8px;
+  grid-template-rows: var(--strip-h) minmax(0, 1fr) auto;
+  gap: 0 8px;
+  padding: 0 8px 8px;
 }
 .app.with-queue { grid-template-columns: 268px minmax(0, 1fr) 340px; }
-/* Content runs to the bottom of the window; the player bar floats over it. */
-.app > .center { grid-row: 1 / 3; grid-column: 2; }
+.app.with-queue .playerbar { --pb-right: calc(340px + 16px); }
+.app > .center { grid-row: 2 / 4; grid-column: 2; }
 
 .sidebar {
-  grid-row: 1;
+  grid-row: 1 / 4;
+  margin-top: 8px;
   border-radius: var(--radius-panel);
   display: flex;
   flex-direction: column;
@@ -137,21 +142,21 @@ h1, h2, h3, p { margin: 0; }
   border: 1px solid var(--line);
   overflow: hidden;
 }
-/* The top bar floats over the page; content scrolls beneath it. */
+/* The title strip: Windows' window buttons sit at its right end (the window's
+   title bar overlay is the same height), never over the page. */
 .topbar {
-  position: absolute;
-  inset: 0 0 auto;
-  z-index: 3;
+  grid-row: 1;
+  grid-column: 2 / -1;
   display: flex;
   align-items: center;
   gap: 12px;
-  height: 60px;
-  padding: 0 calc(16px + var(--titlebar-right)) 0 16px;
+  height: var(--strip-h);
+  padding: 0 calc(8px + var(--titlebar-right)) 0 4px;
   -webkit-app-region: drag;
 }
 .topbar > *:not(.drag-space) { -webkit-app-region: no-drag; }
 .drag-space { flex: 1; align-self: stretch; }
-.main { flex: 1; overflow-y: auto; overflow-x: hidden; padding-bottom: calc(var(--bar-h) + 16px); scroll-padding-top: 68px; animation: page-in 0.28s var(--ease); }
+.main { flex: 1; overflow-y: auto; overflow-x: hidden; padding-bottom: calc(var(--bar-h) + 32px); animation: page-in 0.28s var(--ease); }
 @keyframes page-in { from { opacity: 0; transform: translateY(6px); } }
 
 /* ---- controls --------------------------------------------------------- */
@@ -226,7 +231,7 @@ h1, h2, h3, p { margin: 0; }
 
 /* ---- pages ------------------------------------------------------------ */
 
-.page { padding: 68px 32px 48px; max-width: 1500px; }
+.page { padding: 20px 32px 48px; max-width: 1500px; }
 .page.is-stale, .is-stale { opacity: 0.55; transition: opacity 0.2s; }
 .page-narrow { max-width: 760px; }
 .page-hero { padding: 18px 0 26px; }
@@ -323,7 +328,7 @@ h1, h2, h3, p { margin: 0; }
 .artist-shade { position: absolute; inset: 0; background: linear-gradient(to bottom, rgb(14 13 19 / 0.05), rgb(14 13 19 / 0.85)); }
 .artist-head h1 { position: relative; font-size: clamp(40px, 6vw, 84px); font-weight: 800; letter-spacing: -0.035em; line-height: 1; text-shadow: 0 4px 30px rgb(0 0 0 / 0.5); }
 .page-artist { padding-top: 0; }
-.page-artist .artist-head { height: 360px; }
+
 .about p { color: var(--haze); max-width: 72ch; line-height: 1.65; white-space: pre-line; }
 
 .empty { display: grid; justify-items: center; gap: 10px; padding: 56px 20px; text-align: center; color: var(--haze); }
@@ -357,9 +362,18 @@ kbd { display: inline-block; min-width: 26px; padding: 2px 7px; border-radius: 6
 
 /* ---- player bar ------------------------------------------------------- */
 
+/* A centred floating player over the page, not a strip from edge to edge.
+   Positioned on its own (not a grid cell): Chromium only blurs what's behind
+   a backdrop-filter when the element isn't laid out in the grid over it. */
 .playerbar {
-  grid-column: 1 / -1;
-  grid-row: 2;
+  --pb-left: calc(268px + 16px);
+  --pb-right: 8px;
+  position: fixed;
+  left: var(--pb-left);
+  right: var(--pb-right);
+  bottom: 20px;
+  margin-inline: auto;
+  width: min(880px, calc(100vw - var(--pb-left) - var(--pb-right) - 24px));
   height: var(--bar-h);
   z-index: 5;
   border-radius: var(--radius-panel);
@@ -371,7 +385,6 @@ kbd { display: inline-block; min-width: 26px; padding: 2px 7px; border-radius: 6
   /* Liquid Glass, regular variant: the one glass surface in LUMA. It floats
      over the page, blurs whatever scrolls beneath it and takes its colour
      from that; a lit top edge and a soft sheen give it depth. */
-  position: relative;
   isolation: isolate;
   background: linear-gradient(180deg, rgb(255 255 255 / 0.075), rgb(255 255 255 / 0.02) 55%), rgb(18 16 26 / 0.64);
   -webkit-backdrop-filter: blur(32px) saturate(150%);
@@ -396,7 +409,7 @@ kbd { display: inline-block; min-width: 26px; padding: 2px 7px; border-radius: 6
 .center::after {
   content: "";
   position: absolute;
-  inset: auto 0 var(--bar-h);
+  inset: auto 0 calc(var(--bar-h) + 12px);
   height: 28px;
   z-index: 2;
   pointer-events: none;
@@ -437,7 +450,7 @@ kbd { display: inline-block; min-width: 26px; padding: 2px 7px; border-radius: 6
 
 /* ---- queue ------------------------------------------------------------ */
 
-.queue { grid-row: 1; grid-column: 3; border-radius: var(--radius-panel); display: flex; flex-direction: column; padding: 14px 10px 14px; min-height: 0; animation: slide-in 0.25s var(--ease); }
+.queue { grid-row: 2; grid-column: 3; border-radius: var(--radius-panel); display: flex; flex-direction: column; padding: 14px 10px 14px; min-height: 0; animation: slide-in 0.25s var(--ease); }
 @keyframes slide-in { from { opacity: 0; transform: translateX(16px); } }
 .queue-head { display: flex; align-items: center; justify-content: space-between; padding: 0 6px 6px 10px; }
 .queue-head h2 { font-size: 17px; font-weight: 700; }
@@ -565,7 +578,7 @@ kbd { display: inline-block; min-width: 26px; padding: 2px 7px; border-radius: 6
 
 @media (max-width: 980px) {
   .app, .app.with-queue { grid-template-columns: 76px minmax(0, 1fr); }
-  .app.with-queue .queue { position: fixed; right: 8px; top: 8px; bottom: 100px; width: min(340px, 90vw); z-index: 30; }
+  .app.with-queue .queue { position: fixed; right: 8px; top: 52px; bottom: 112px; width: min(340px, 90vw); z-index: 30; }
   .sidebar { padding: 14px 8px; }
   .brand span, .nav-item span, .side-head span, .side-text { display: none; }
   .brand { justify-content: center; padding: 2px 0 18px; }
@@ -574,7 +587,7 @@ kbd { display: inline-block; min-width: 26px; padding: 2px 7px; border-radius: 6
   .side-row { justify-content: center; padding: 6px 0; }
   .row { grid-template-columns: 32px 40px minmax(0, 1fr) auto; }
   .row-album { display: none; }
-  .playerbar { grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; }
+  .playerbar, .app.with-queue .playerbar { --pb-left: calc(76px + 16px); --pb-right: 8px; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; }
   .pb-center .seek { display: none; }
   .volume { display: none; }
   .np-body { grid-template-columns: 1fr; padding: 0 28px 24px; }
@@ -606,20 +619,6 @@ kbd { display: inline-block; min-width: 26px; padding: 2px 7px; border-radius: 6
 
 .seek { position: relative; }
 .seek-tip { position: absolute; bottom: 20px; transform: translateX(-50%); padding: 3px 8px; border-radius: 7px; background: var(--surface-raised); border: 1px solid var(--line); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; pointer-events: none; white-space: nowrap; box-shadow: 0 6px 20px rgb(0 0 0 / 0.4); }
-
-/* When the page scrolls, the top bar gets a solid backing and a hairline. */
-.topbar::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background: #121018;
-  border-bottom: 1px solid var(--line);
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-.center.is-scrolled .topbar::before { opacity: 1; }
 
 .top-result { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 28px; margin-bottom: 40px; }
 .top-card { position: relative; display: grid; gap: 14px; padding: 22px; border-radius: var(--radius-panel); background: rgb(255 255 255 / 0.06); border: 1px solid var(--line); text-align: left; transition: background 0.2s; min-width: 0; }

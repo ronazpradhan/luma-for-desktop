@@ -125,7 +125,8 @@ async function start() {
     title: "LUMA",
     icon: path.join(__dirname, "..", "build", "icon.png"),
     titleBarStyle: "hidden",
-    titleBarOverlay: { color: "#00000000", symbolColor: "#f1e8d6", height: 44 },
+    // Same height as the title strip (--strip-h), so the buttons line up with search.
+    titleBarOverlay: { color: "#00000000", symbolColor: "#f1e8d6", height: 52 },
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,

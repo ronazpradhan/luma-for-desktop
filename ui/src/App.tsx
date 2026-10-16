@@ -81,8 +81,8 @@ export function App() {
     <div className={`app ${queueOpen ? "with-queue" : ""}`}>
       <div className="ambient" aria-hidden />
       <Sidebar />
+      <TopBar />
       <div className={`center ${scrolled ? "is-scrolled" : ""}`}>
-        <TopBar />
         <main className="main" ref={main} key={JSON.stringify(route)} onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 8)}>
           <Page />
         </main>
