@@ -12,11 +12,13 @@ const HEDGE_MS = 700;
 /** How long a ready YouTube link waits for a JioSaavn answer still on its way. */
 const SAAVN_GRACE_MS = 250;
 
-export function createResolver({ saavn, ytdlp, innertube = null, mobileWeb = null, youtubeAuth = null, tmpDir = null, log = () => {}, brokenStreams = {}, onBroken = () => {} }) {
+export function createResolver({ saavn, ytdlp, innertube = null, mobileWeb = null, youtubeAuth = null, tmpDir = null, log = () => {}, brokenStreams = {}, onBroken = () => {}, alternatives = null }) {
   const cache = new Map(); // video id -> { stream, expiresAt }
   const inFlight = new Map(); // video id -> { light, job }
-  // Songs whose stream wouldn't play: video id -> { strikes, noSaavn }. The next
-  // lookup takes another file: AAC instead of Opus, then yt-dlp's link.
+  // Songs whose stream wouldn't play: video id -> { strikes, noSaavn, alt, badAlts }.
+  // Retries take JioSaavn's copy (waiting for it), then another upload of the
+  // same song ([alt], found by [alternatives]), then this video's other files:
+  // AAC instead of Opus, then yt-dlp's link.
   const broken = new Map(Object.entries(brokenStreams).map(([id, b]) => [id, { ...b }]));
 
   function cached(id) {
@@ -85,9 +87,14 @@ export function createResolver({ saavn, ytdlp, innertube = null, mobileWeb = nul
     let ytdlpJob = null;
     const startYtDlp = () => {
       if (light || saavnSettled === "hit") return null;
-      return (ytdlpJob ??= viaYtDlp(track, stop.signal));
+      return (ytdlpJob ??= viaYtDlp(yt, stop.signal));
     };
-    const saavnJob = (broken.get(track.id)?.noSaavn ? Promise.resolve(null) : viaSaavn(track))
+    const b = broken.get(track.id);
+    // A song YouTube's copy of broke: JioSaavn's is worth waiting for.
+    const patient = (b?.strikes ?? 0) >= 1 && !b.noSaavn;
+    // Another upload of the song plays where this video's own files don't.
+    const yt = b?.alt ? { ...track, id: b.alt } : track;
+    const saavnJob = (b?.noSaavn ? Promise.resolve(null) : viaSaavn(track))
       .catch((e) => {
         log(`jiosaavn failed for ${track.id}: ${e.message}`);
         return null;
@@ -96,7 +103,7 @@ export function createResolver({ saavn, ytdlp, innertube = null, mobileWeb = nul
         saavnSettled = s ? "hit" : "miss";
         return s;
       });
-    const fastJob = viaFastLane(track, stop.signal).catch((e) => {
+    const fastJob = viaFastLane(yt, stop.signal).catch((e) => {
       if (!stop.signal.aborted) log(`fast lane failed for ${track.id}: ${e.message}`);
       return null;
     });
@@ -114,7 +121,7 @@ export function createResolver({ saavn, ytdlp, innertube = null, mobileWeb = nul
     if (first.from === "saavn") {
       stream = first.s ?? (await fastJob);
     } else if (first.s) {
-      const late = await Promise.race([saavnJob, new Promise((r) => setTimeout(() => r(null), SAAVN_GRACE_MS))]);
+      const late = patient ? await saavnJob : await Promise.race([saavnJob, new Promise((r) => setTimeout(() => r(null), SAAVN_GRACE_MS))]);
       stream = late ?? first.s;
     } else {
       stream = (await saavnJob) ?? null;
@@ -161,15 +168,39 @@ export function createResolver({ saavn, ytdlp, innertube = null, mobileWeb = nul
      * errored): looks it up again for a different file, never the same link.
      */
     async retry(track) {
+      await inFlight.get(track.id)?.job.catch(() => null);
       const was = cache.get(track.id)?.stream;
       cache.delete(track.id);
-      const b = broken.get(track.id) ?? { strikes: 0, noSaavn: false };
+      const b = { strikes: 0, noSaavn: false, alt: null, badAlts: [], ...broken.get(track.id) };
       if (was?.source === "jiosaavn") b.noSaavn = true;
-      else b.strikes++;
-      broken.set(track.id, b);
-      onBroken(track.id, { ...b });
-      log(`retrying "${track.title}" (${track.id}) after ${was ? `${was.source} ${was.codec}` : "a broken stream"} failed: ${b.strikes >= 2 ? "yt-dlp, AAC" : b.strikes ? "AAC" : "YouTube"}`);
-      await inFlight.get(track.id)?.job.catch(() => null);
+      else if (b.alt) {
+        b.badAlts = [...b.badAlts, b.alt];
+        b.alt = null;
+      } else b.strikes++;
+      const keep = () => { broken.set(track.id, b); onBroken(track.id, { ...b }); };
+      const serve = (stream, how) => {
+        keep();
+        log(`retried "${track.title}" (${track.id}) after ${was ? `${was.source} ${was.codec}` : "a broken stream"}: ${how}`);
+        cache.set(track.id, { stream, expiresAt: stream.expiresAt });
+        return stream;
+      };
+      if (!b.noSaavn) {
+        const s = await viaSaavn(track).catch(() => null);
+        if (s) return serve(s, "JioSaavn");
+        b.noSaavn = true;
+      }
+      if (alternatives) {
+        const others = (await alternatives(track).catch(() => [])).filter((a) => a.id !== track.id && !b.badAlts.includes(a.id));
+        for (const alt of others.slice(0, 2)) {
+          const s = (await viaFastLane(alt).catch(() => null)) ?? (ytdlp ? await viaYtDlp(alt).catch(() => null) : null);
+          if (s) {
+            b.alt = alt.id;
+            return serve(s, `another upload (${alt.id})`);
+          }
+        }
+      }
+      keep();
+      log(`retrying "${track.title}" (${track.id}) after ${was ? `${was.source} ${was.codec}` : "a broken stream"}: ${b.strikes >= 2 ? "yt-dlp, AAC" : "AAC"}`);
       cache.delete(track.id);
       return this.resolve(track);
     },

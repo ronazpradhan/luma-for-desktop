@@ -73,8 +73,8 @@ let reached = 0;
 let lastSeen = 0;
 let lastSeenAt = 0;
 const seekTo = (sec: number) => { reached = lastSeen = sec; lastSeenAt = performance.now(); audio.currentTime = sec; };
-/** Each retry gets a different file (AAC, then yt-dlp's); after that the song is skipped, not retried forever. */
-const MAX_TRIES = 2;
+/** Each retry gets a different file (JioSaavn's, another upload, AAC, yt-dlp's); then the song is skipped, not retried forever. */
+const MAX_TRIES = 3;
 let tries = 0;
 const resolved = new Map<string, Promise<Resolved>>();
 
@@ -245,6 +245,8 @@ export const usePlayer = create<PlayerState>((set, get) => {
     const expected = expectedPosition();
     api.log(`ended "${t?.title}" at ${audio.currentTime.toFixed(1)} of ${audio.duration.toFixed(1)} s (by the clock ${expected.toFixed(1)} s, played to ${reached.toFixed(1)} s)`);
     const got = Math.min(expected, reached);
+    const ranges = (r: TimeRanges) => Array.from({ length: r.length }, (_, i) => `${r.start(i).toFixed(1)}-${r.end(i).toFixed(1)}`).join(",") || "none";
+    if (t && got < 5) api.log(`"${t.title}" details: buffered ${ranges(audio.buffered)}, seekable ${ranges(audio.seekable)}, played ${ranges(audio.played)}, ready ${audio.readyState}`);
     // The player jumped to the end: the stream or file broke, the song didn't finish.
     if (t && Number.isFinite(audio.duration) && audio.duration - got > 5) return recover(t, got, "ended early");
     // Or the file was cut short and the player believed it: far shorter than the song.

@@ -106,3 +106,28 @@ test("a JioSaavn file that won't play falls back to YouTube", async () => {
   assert.equal(next.source, "youtube");
   assert.equal(next.codec, "opus");
 });
+
+test("when every file of a video breaks, another upload of the song plays", async () => {
+  const innertube = { audio: async (id) => ({ url: `https://rr2.googlevideo.com/videoplayback?expire=9999999999&v=${id}`, codec: "opus", size: 10 }) };
+  const remembered = {};
+  const other = { id: "OTHERUPLOAD", title: track.title, artist: track.artist, duration: 226 };
+  const r = createResolver({ saavn: { search: async () => [] }, ytdlp: fakeYt(10), innertube, onBroken: (id, b) => (remembered[id] = b), alternatives: async () => [other] });
+  await r.resolve(track);
+  const s = await r.retry(track);
+  assert.match(s.url, /v=OTHERUPLOAD/);
+  assert.equal(remembered[track.id].alt, "OTHERUPLOAD");
+  // Next time (even after a restart), straight to the upload that plays.
+  const later = createResolver({ saavn: { search: async () => [] }, ytdlp: fakeYt(10), innertube, brokenStreams: remembered });
+  assert.match((await later.resolve(track)).url, /v=OTHERUPLOAD/);
+  // That one breaking too falls back to the video's own other files.
+  const third = await r.retry(track);
+  assert.equal(third.codec, "opus");
+  assert.deepEqual(remembered[track.id].badAlts, ["OTHERUPLOAD"]);
+});
+
+test("after a broken YouTube stream, JioSaavn is waited for", async () => {
+  const innertube = { audio: async () => ({ url: "https://rr2.googlevideo.com/videoplayback?expire=9999999999", codec: "opus", size: 10 }) };
+  const slowSaavn = { search: async () => { await wait(600); return [saavnSong]; } };
+  const r = createResolver({ saavn: slowSaavn, ytdlp: fakeYt(5_000), innertube, brokenStreams: { [track.id]: { strikes: 1, noSaavn: false } } });
+  assert.equal((await r.resolve(track)).source, "jiosaavn");
+});

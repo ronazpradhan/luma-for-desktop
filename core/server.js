@@ -67,7 +67,7 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
     return a;
   }
   const mobileWeb = createYtJs({ log });
-  const resolver = createResolver({ saavn, ytdlp, innertube: createInnerTube({ log }), mobileWeb, youtubeAuth, tmpDir: path.join(dataDir, "bin"), log, brokenStreams: store.brokenStreams(), onBroken: (id, b) => store.setBrokenStream(id, b) });
+  const resolver = createResolver({ saavn, ytdlp, innertube: createInnerTube({ log }), mobileWeb, youtubeAuth, tmpDir: path.join(dataDir, "bin"), log, brokenStreams: store.brokenStreams(), onBroken: (id, b) => store.setBrokenStream(id, b), alternatives: (t) => otherUploads(t) });
   const lyrics = createLyrics({ ytmusic, version, dataDir, log, server: () => store.snapshot().settings.lyricsServer || null });
 
   // ---- Spotify: the session is kept like YouTube's, encrypted with Windows' protection.
@@ -86,6 +86,16 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
     // Only found songs are remembered: a song not found is looked for again next import.
     matches = Object.fromEntries(Object.entries(JSON.parse(await readFile(matchFile, "utf8"))).filter(([, v]) => v));
   } catch { /* first import */ }
+
+  /** Other YouTube Music uploads of [t] (another album, a single), for when its own video won't play. */
+  async function otherUploads(t) {
+    const res = await ytmusic.search(`${t.title} ${t.artist.split(",")[0]}`);
+    const want = { title: t.title, artist: t.artist, duration: t.duration };
+    return (res?.songs ?? [])
+      .filter((s) => s.id !== t.id)
+      .filter((s) => bestMatch(want, [{ ...s, artists: s.artist.split(/,\s*|\s&\s/) }]))
+      .slice(0, 3);
+  }
 
   /** The YouTube Music recording of a Spotify track, or null when unsure. */
   async function matchOnYouTube(t) {
