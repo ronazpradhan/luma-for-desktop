@@ -1,9 +1,9 @@
-import { ArrowDownCircle, Download, Heart, Home, Library, Plus, Search, Settings } from "lucide-react";
+import { ArrowDownCircle, Heart, Home, Library, Plus, Search, Settings } from "lucide-react";
 import { installUpdate, useUpdate } from "../update";
 import { dismissToast, useToast } from "../toast";
 import { useLibrary } from "../library";
 import { useNav, type Route } from "../nav";
-import { PlaylistCover } from "./bits";
+import { PlaylistCover, SpecialCover } from "./bits";
 import { deletePlaylistAsk, hideYouTubeAsk, openPlaylistMenu } from "./PlaylistMenu";
 
 export function Sidebar() {
@@ -45,11 +45,11 @@ export function Sidebar() {
         </div>
         <div className="side-list">
           <button className={`side-row ${route.name === "liked" ? "is-active" : ""}`} onClick={() => go({ name: "liked" })} onContextMenu={openPlaylistMenu({ kind: "liked" })} title="Liked songs" aria-current={route.name === "liked" ? "page" : undefined}>
-            <span className="side-icon liked"><Heart size={16} fill="currentColor" /></span>
+            <span className="side-icon special"><SpecialCover kind="liked" size={19} /></span>
             <span className="side-text"><b>Liked songs</b><small>{likes} {likes === 1 ? "song" : "songs"}</small></span>
           </button>
           <button className={`side-row ${route.name === "downloads" ? "is-active" : ""}`} onClick={() => go({ name: "downloads" })} onContextMenu={openPlaylistMenu({ kind: "downloads" })} title="Downloads" aria-current={route.name === "downloads" ? "page" : undefined}>
-            <span className="side-icon downloads"><Download size={16} strokeWidth={2.4} /></span>
+            <span className="side-icon special"><SpecialCover kind="downloads" size={19} /></span>
             <span className="side-text"><b>Downloads</b><small>On this PC</small></span>
           </button>
           {ytPlaylists.map((p) => (

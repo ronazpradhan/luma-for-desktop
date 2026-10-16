@@ -104,6 +104,34 @@ export function SkeletonShelf({ count = 6 }: { count?: number }) {
 }
 
 /** Download: an outlined circle with an arrow down. */
+/**
+ * Liked songs and Downloads: their own covers, the same in the sidebar and the
+ * Library. A glossy heart with a sparkle; an arrow dropping into a tray.
+ */
+export function SpecialCover({ kind, size = 16 }: { kind: "liked" | "downloads"; size?: number }) {
+  return (
+    <span className={`special-cover ${kind}`} aria-hidden>
+      {kind === "liked" ? (
+        <svg width={size} height={size} viewBox="0 0 24 24">
+          <defs>
+            <linearGradient id="lc-heart" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="#fff" />
+              <stop offset="1" stopColor="#ffe3f1" />
+            </linearGradient>
+          </defs>
+          <path transform="translate(0.6 2.2) scale(0.86)" fill="url(#lc-heart)" d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+          <path fill="#fff" d="M20.2 1.2l.62 1.48 1.48.62-1.48.62-.62 1.48-.62-1.48-1.48-.62 1.48-.62Z" />
+        </svg>
+      ) : (
+        <svg width={size} height={size} viewBox="0 0 24 24">
+          <path fill="rgb(255 255 255 / 0.92)" d="M3.5 14.2h4.3l1.6 2.6h5.2l1.6-2.6h4.3v3.6a2.6 2.6 0 0 1-2.6 2.6H6.1a2.6 2.6 0 0 1-2.6-2.6Z" />
+          <path fill="none" stroke="#fff" strokeWidth={2.3} strokeLinecap="round" strokeLinejoin="round" d="M12 3.2v9.6M7.8 8.8 12 13l4.2-4.2" />
+        </svg>
+      )}
+    </span>
+  );
+}
+
 export function DownloadGlyph({ size = 18 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>

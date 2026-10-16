@@ -1,5 +1,5 @@
-import { Download, Heart, Plus } from "lucide-react";
-import { Art, Empty } from "../components/bits";
+import { Plus } from "lucide-react";
+import { Art, Empty, SpecialCover } from "../components/bits";
 import { Shelf } from "../components/Shelf";
 import { TrackList } from "../components/TrackList";
 import { useLibrary } from "../library";
@@ -19,12 +19,12 @@ export function LibraryPage() {
       <section className="block">
         <div className="tile-grid">
           <button className="tile tile-special" onClick={() => go({ name: "liked" })} onContextMenu={openPlaylistMenu({ kind: "liked" })}>
-            <div className="tile-art special liked"><Heart size={40} fill="currentColor" /></div>
+            <div className="tile-art special cover"><SpecialCover kind="liked" size={64} /></div>
             <div className="tile-title">Liked songs</div>
             <div className="tile-sub">{lib.likes.length} {lib.likes.length === 1 ? "song" : "songs"}</div>
           </button>
           <button className="tile tile-special" onClick={() => go({ name: "downloads" })} onContextMenu={openPlaylistMenu({ kind: "downloads" })}>
-            <div className="tile-art special"><Download size={40} /></div>
+            <div className="tile-art special cover"><SpecialCover kind="downloads" size={64} /></div>
             <div className="tile-title">Downloads</div>
             <div className="tile-sub">{downloads} {downloads === 1 ? "song" : "songs"}</div>
           </button>
