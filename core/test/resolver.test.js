@@ -77,3 +77,32 @@ test("a click during a hover lookup takes its answer instead of starting again",
   assert.equal((await hover).source, "jiosaavn");
   assert.equal(searches, 1);
 });
+
+test("a stream that won't play is swapped for AAC, then yt-dlp's, and remembered", async () => {
+  const asked = [];
+  const innertube = { audio: async (_id, { aac }) => { asked.push(`fast ${aac ? "aac" : "opus"}`); return { url: `https://rr2.googlevideo.com/videoplayback?expire=9999999999&c=${aac ? "aac" : "opus"}`, codec: aac ? "aac" : "opus", size: 10 }; } };
+  const ytdlp = { audio: async (_id, { aac }) => { asked.push(`yt-dlp ${aac ? "aac" : "opus"}`); return { url: "https://rr3.googlevideo.com/videoplayback?expire=9999999999", codec: aac ? "aac" : "opus", size: 10 }; } };
+  const remembered = {};
+  const r = createResolver({ saavn: { search: async () => [] }, ytdlp, innertube, onBroken: (id, b) => (remembered[id] = b) });
+  assert.equal((await r.resolve(track)).codec, "opus");
+  // Asked again (the player's retry), never the same link.
+  const second = await r.retry(track);
+  assert.equal(second.codec, "aac");
+  assert.match(second.url, /c=aac/);
+  const third = await r.retry(track);
+  assert.match(third.url, /rr3/);
+  assert.deepEqual(asked, ["fast opus", "fast aac", "yt-dlp aac"]);
+  assert.equal(remembered[track.id].strikes, 2);
+  // After a restart the song goes straight to the file that plays.
+  const again = createResolver({ saavn: { search: async () => [] }, ytdlp, innertube, brokenStreams: { [track.id]: { strikes: 1, noSaavn: false } } });
+  assert.equal((await again.resolve(track)).codec, "aac");
+});
+
+test("a JioSaavn file that won't play falls back to YouTube", async () => {
+  const innertube = { audio: async () => ({ url: "https://rr2.googlevideo.com/videoplayback?expire=9999999999", codec: "opus", size: 10 }) };
+  const r = createResolver({ saavn: { search: async () => [saavnSong] }, ytdlp: fakeYt(50), innertube });
+  assert.equal((await r.resolve(track)).source, "jiosaavn");
+  const next = await r.retry(track);
+  assert.equal(next.source, "youtube");
+  assert.equal(next.codec, "opus");
+});

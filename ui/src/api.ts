@@ -124,7 +124,8 @@ export const api = {
   ytPlaylist: (id: string) => call<YtPlaylist>("GET", `/api/ytplaylist/${id}`),
   radio: (id: string) => call<Track[]>("GET", `/api/radio/${id}`),
   lyrics: (t: Track) => call<Lyrics>("POST", "/api/lyrics", { track: slim(t) }),
-  resolve: (t: Track, online = false) => call<Resolved>("POST", "/api/resolve", { track: slim(t), online }),
+  /** [retry]: the last stream wouldn't play, so a different file. */
+  resolve: (t: Track, online = false, retry = false) => call<Resolved>("POST", "/api/resolve", { track: slim(t), online, retry }),
   log: (message: string) => call<{ ok: true }>("POST", "/api/log", { message }).catch(() => {}),
   prefetch: (t: Track) => call<{ ready: boolean }>("POST", "/api/prefetch", { track: slim(t) }),
   library: () => call<Library>("GET", "/api/library"),

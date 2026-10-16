@@ -12,9 +12,12 @@ const HEDGE_MS = 700;
 /** How long a ready YouTube link waits for a JioSaavn answer still on its way. */
 const SAAVN_GRACE_MS = 250;
 
-export function createResolver({ saavn, ytdlp, innertube = null, mobileWeb = null, youtubeAuth = null, tmpDir = null, log = () => {} }) {
+export function createResolver({ saavn, ytdlp, innertube = null, mobileWeb = null, youtubeAuth = null, tmpDir = null, log = () => {}, brokenStreams = {}, onBroken = () => {} }) {
   const cache = new Map(); // video id -> { stream, expiresAt }
   const inFlight = new Map(); // video id -> { light, job }
+  // Songs whose stream wouldn't play: video id -> { strikes, noSaavn }. The next
+  // lookup takes another file: AAC instead of Opus, then yt-dlp's link.
+  const broken = new Map(Object.entries(brokenStreams).map(([id, b]) => [id, { ...b }]));
 
   function cached(id) {
     const hit = cache.get(id);
@@ -44,15 +47,19 @@ export function createResolver({ saavn, ytdlp, innertube = null, mobileWeb = nul
   }
 
   /** YouTube's app clients first (Android's fast lane), then its mobile website (Spotube's way). */
+  const preferAac = (track) => (broken.get(track.id)?.strikes ?? 0) >= 1;
+
   async function viaFastLane(track, signal) {
+    if ((broken.get(track.id)?.strikes ?? 0) >= 2) return null;
+    const aac = preferAac(track);
     // Both at once: the app clients' Opus is preferred, but the mobile website
     // doesn't wait for them to be turned away.
     const quiet = (job) => job.catch((e) => {
       if (signal?.aborted) throw e;
       return null;
     });
-    const apps = innertube ? quiet(innertube.audio(track.id, { signal })) : Promise.resolve(null);
-    const web = mobileWeb ? quiet(mobileWeb.audio(track.id, { signal })) : Promise.resolve(null);
+    const apps = innertube ? quiet(innertube.audio(track.id, { signal, aac })) : Promise.resolve(null);
+    const web = mobileWeb ? quiet(mobileWeb.audio(track.id, { signal, aac })) : Promise.resolve(null);
     const first = await Promise.race([apps.then((a) => ({ from: "apps", a })), web.then((a) => ({ from: "web", a }))]);
     let pick;
     if (first.from === "apps") pick = first.a ?? (await web);
@@ -61,7 +68,7 @@ export function createResolver({ saavn, ytdlp, innertube = null, mobileWeb = nul
   }
 
   async function viaYtDlp(track, signal) {
-    const run = (cookieFile) => ytdlp.audio(track.id, { cookieFile, signal });
+    const run = (cookieFile) => ytdlp.audio(track.id, { cookieFile, signal, aac: preferAac(track) });
     return youTubeStream(youtubeAuth ? await youtubeAuth.withCookieFile(tmpDir, run) : await run(null));
   }
 
@@ -80,7 +87,7 @@ export function createResolver({ saavn, ytdlp, innertube = null, mobileWeb = nul
       if (light || saavnSettled === "hit") return null;
       return (ytdlpJob ??= viaYtDlp(track, stop.signal));
     };
-    const saavnJob = viaSaavn(track)
+    const saavnJob = (broken.get(track.id)?.noSaavn ? Promise.resolve(null) : viaSaavn(track))
       .catch((e) => {
         log(`jiosaavn failed for ${track.id}: ${e.message}`);
         return null;
@@ -147,6 +154,24 @@ export function createResolver({ saavn, ytdlp, innertube = null, mobileWeb = nul
       });
       inFlight.set(track.id, { light, job });
       return job;
+    },
+
+    /**
+     * The player couldn't play [track]'s stream (it jumped to the end or
+     * errored): looks it up again for a different file, never the same link.
+     */
+    async retry(track) {
+      const was = cache.get(track.id)?.stream;
+      cache.delete(track.id);
+      const b = broken.get(track.id) ?? { strikes: 0, noSaavn: false };
+      if (was?.source === "jiosaavn") b.noSaavn = true;
+      else b.strikes++;
+      broken.set(track.id, b);
+      onBroken(track.id, { ...b });
+      log(`retrying "${track.title}" (${track.id}) after ${was ? `${was.source} ${was.codec}` : "a broken stream"} failed: ${b.strikes >= 2 ? "yt-dlp, AAC" : b.strikes ? "AAC" : "YouTube"}`);
+      await inFlight.get(track.id)?.job.catch(() => null);
+      cache.delete(track.id);
+      return this.resolve(track);
     },
 
     /** Drops a link that stopped working, so the next play looks again. */

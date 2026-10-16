@@ -100,9 +100,9 @@ export function createYtDlp({ binDir, fetchImpl = fetch, log = () => {} }) {
     });
   }
 
-  async function once(videoId, client, cookieFile, signal) {
+  async function once(videoId, client, cookieFile, signal, aac) {
     const args = [
-      "-f", "251/250/140/bestaudio",
+      "-f", aac ? "140/bestaudio[ext=m4a]/bestaudio" : "251/250/140/bestaudio",
       "--no-playlist", "--no-download", "--no-warnings",
       "--js-runtimes", `node:${process.execPath}`,
       "--print", "%(url)s",
@@ -134,7 +134,7 @@ export function createYtDlp({ binDir, fetchImpl = fetch, log = () => {} }) {
      * [cookieFile] is the signed-in session, when there is one; [signal]
      * stops the lookup (yt-dlp is ended) when the song is found elsewhere.
      */
-    async audio(videoId, { cookieFile = null, signal } = {}) {
+    async audio(videoId, { cookieFile = null, signal, aac = false } = {}) {
       if (!VIDEO_ID.test(videoId)) throw new Error("not a YouTube video id");
       await ensure();
       const key = cookieFile ? "signedIn" : "signedOut";
@@ -146,7 +146,7 @@ export function createYtDlp({ binDir, fetchImpl = fetch, log = () => {} }) {
       for (const client of plan) {
         signal?.throwIfAborted();
         try {
-          const a = await once(videoId, client, cookieFile, signal);
+          const a = await once(videoId, client, cookieFile, signal, aac);
           if (await servesWholeFile(a, signal)) {
             winner[key] = client;
             return a;

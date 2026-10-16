@@ -47,14 +47,14 @@ export function createYtJs({ log = () => {}, fetchImpl = fetch } = {}) {
      * YouTube lets it play to the end, else the small combined file (itag 18,
      * AAC ~96 kbps) that it serves without a sign-in. Null when neither plays.
      */
-    async audio(videoId, { signal } = {}) {
+    async audio(videoId, { signal, aac = false } = {}) {
       if (!VIDEO_ID.test(videoId)) return null;
       const yt = await client();
       signal?.throwIfAborted();
       const info = await yt.getBasicInfo(videoId, { client: "MWEB" });
       if (info.playability_status?.status !== "OK") return null;
       const all = [...(info.streaming_data?.adaptive_formats ?? []), ...(info.streaming_data?.formats ?? [])];
-      const audioOnly = all.filter((f) => f.has_audio && !f.has_video).sort((a, b) => rank(b) - rank(a));
+      const audioOnly = all.filter((f) => f.has_audio && !f.has_video).sort((a, b) => rank(b, aac) - rank(a, aac));
       const combined = all.find((f) => f.itag === 18);
       // Both candidates are checked at once; the audio-only stream wins when it plays to the end.
       const checks = [audioOnly[0], combined].filter(Boolean).map(async (f) => {
@@ -81,8 +81,8 @@ export function createYtJs({ log = () => {}, fetchImpl = fetch } = {}) {
   };
 }
 
-function rank(f) {
-  return (f.mime_type?.includes("opus") ? 1_000_000 : 0) + (f.bitrate ?? 0);
+function rank(f, aac) {
+  return (Boolean(f.mime_type?.includes("opus")) !== aac ? 1_000_000 : 0) + (f.bitrate ?? 0);
 }
 
 /**

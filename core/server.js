@@ -67,7 +67,7 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
     return a;
   }
   const mobileWeb = createYtJs({ log });
-  const resolver = createResolver({ saavn, ytdlp, innertube: createInnerTube({ log }), mobileWeb, youtubeAuth, tmpDir: path.join(dataDir, "bin"), log });
+  const resolver = createResolver({ saavn, ytdlp, innertube: createInnerTube({ log }), mobileWeb, youtubeAuth, tmpDir: path.join(dataDir, "bin"), log, brokenStreams: store.brokenStreams(), onBroken: (id, b) => store.setBrokenStream(id, b) });
   const lyrics = createLyrics({ ytmusic, version, dataDir, log, server: () => store.snapshot().settings.lyricsServer || null });
 
   // ---- Spotify: the session is kept like YouTube's, encrypted with Windows' protection.
@@ -316,9 +316,19 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
       }
       const out = { "Accept-Ranges": "bytes", "Content-Type": up.headers.get("content-type") ?? "audio/mp4", "Cache-Control": "no-store" };
       for (const h of ["content-length", "content-range"]) if (up.headers.get(h)) out[h] = up.headers.get(h);
+      if (up.status !== 200 && up.status !== 206) log(`stream for ${id} (${stream.source} ${stream.codec}) answered ${up.status} to ${req.headers.range ?? "no range"}`);
       res.writeHead(up.status, out);
       if (!up.body) return res.end();
-      Readable.fromWeb(up.body).on("error", () => res.destroy()).pipe(res);
+      // A body cut short is what makes the player jump to the end: say so in the log.
+      const expected = Number(up.headers.get("content-length")) || 0;
+      let sent = 0;
+      const body = Readable.fromWeb(up.body);
+      body.on("data", (c) => (sent += c.length));
+      body.on("end", () => expected && sent < expected && log(`stream for ${id} (${stream.source} ${stream.codec}) ended at ${sent} of ${expected} bytes (${req.headers.range ?? "no range"})`));
+      body.on("error", (e) => {
+        if (!ac.signal.aborted) log(`stream for ${id} (${stream.source} ${stream.codec}) broke after ${sent} bytes: ${e.message}`);
+        res.destroy();
+      }).pipe(res);
       return;
     }
   }
@@ -519,7 +529,7 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
       case "POST resolve": {
         const b = await body(req);
         const t = track(b.track);
-        log(`play "${t.title}" by ${t.artist} (${t.id})${b.online ? " online" : ""}`);
+        log(`play "${t.title}" by ${t.artist} (${t.id})${b.retry ? " again" : b.online ? " online" : ""}`);
         const local = b.online ? null : store.download(t.id);
         let redownload = false;
         if (local) {
@@ -530,7 +540,7 @@ export async function startServer({ port = 0, key, dataDir, musicDir, staticDir 
           await forgetDownload(t.id);
           redownload = true;
         }
-        const s = await resolver.resolve(t).catch((e) => {
+        const s = await (b.retry ? resolver.retry(t) : resolver.resolve(t)).catch((e) => {
           log(`could not play "${t.title}" (${t.id}): ${e.code ?? ""} ${e.message}`);
           const err = new HttpError(502, e.code ? e.message : `Couldn't find this song (${e.message})`);
           err.code = e.code;

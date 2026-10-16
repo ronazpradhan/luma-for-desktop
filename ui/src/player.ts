@@ -73,8 +73,9 @@ let reached = 0;
 let lastSeen = 0;
 let lastSeenAt = 0;
 const seekTo = (sec: number) => { reached = lastSeen = sec; lastSeenAt = performance.now(); audio.currentTime = sec; };
-/** One recovery per song start, so a song that keeps breaking is skipped, not retried forever. */
-let recovered = -1;
+/** Each retry gets a different file (AAC, then yt-dlp's); after that the song is skipped, not retried forever. */
+const MAX_TRIES = 2;
+let tries = 0;
 const resolved = new Map<string, Promise<Resolved>>();
 
 function lookUp(t: Track) {
@@ -103,7 +104,7 @@ export const usePlayer = create<PlayerState>((set, get) => {
     const track = queue[index];
     if (!track) return;
     const token = ++loadToken;
-    recovered = -1;
+    tries = 0;
     reached = lastSeen = 0; lastSeenAt = performance.now();
     audio.pause();
     set({ index, loading: true, playing: false, position: 0, duration: track.duration ?? 0, source: null });
@@ -135,17 +136,21 @@ export const usePlayer = create<PlayerState>((set, get) => {
     }
   }
 
-  /** Looks [index] up again, skipping any download, and plays it from [from] seconds. */
-  async function startOnline(index: number, from = 0) {
+  /**
+   * Looks [index] up again for a different file than the one that broke,
+   * skipping any download, and plays it from [from] seconds. [redownload]: the
+   * broken one was the download, so it's replaced with the new file.
+   */
+  async function startOnline(index: number, from = 0, redownload = false) {
     const track = get().queue[index];
     if (!track) return;
     const token = ++loadToken;
-    recovered = token;
     set({ loading: true });
     try {
-      const source = await api.resolve(track, true);
+      const source = await api.resolve(track, true, true);
       if (token !== loadToken) return;
       set({ source });
+      if (redownload) useLibrary.getState().redownload(track);
       audio.src = streamUrl(track.id, true);
       reached = lastSeen = 0; lastSeenAt = performance.now();
       if (from > 1) audio.addEventListener("loadedmetadata", () => seekTo(from), { once: true });
@@ -206,12 +211,13 @@ export const usePlayer = create<PlayerState>((set, get) => {
 
   /** Mid-song breakage: pick the song up again where it was, once; else skip it. */
   function recover(t: Track, at: number, why: string) {
-    const fresh = recovered !== loadToken;
-    api.log(`"${t.title}" (${t.id}) broke at ${at.toFixed(1)} s from ${get().source?.source ?? "?"}: ${why}${fresh ? "; looking it up again" : "; skipping"}`);
+    const source = get().source;
+    const again = tries < MAX_TRIES;
+    api.log(`"${t.title}" (${t.id}) broke at ${at.toFixed(1)} s from ${source ? `${source.source} ${source.codec}` : "?"}: ${why}${again ? "; trying another file" : "; skipping"}`);
     resolved.delete(t.id);
-    if (fresh) {
-      if (get().source?.source === "download") useLibrary.getState().redownload(t);
-      startOnline(get().index, at);
+    if (again) {
+      tries++;
+      startOnline(get().index, at, source?.source === "download");
       return;
     }
     toast(`"${t.title}" keeps stopping. Skipping to the next song.`);
@@ -238,8 +244,11 @@ export const usePlayer = create<PlayerState>((set, get) => {
     const t = get().current();
     const expected = expectedPosition();
     api.log(`ended "${t?.title}" at ${audio.currentTime.toFixed(1)} of ${audio.duration.toFixed(1)} s (by the clock ${expected.toFixed(1)} s, played to ${reached.toFixed(1)} s)`);
+    const got = Math.min(expected, reached);
     // The player jumped to the end: the stream or file broke, the song didn't finish.
-    if (t && Number.isFinite(audio.duration) && audio.duration - Math.min(expected, reached) > 5) return recover(t, Math.min(expected, reached), "ended early");
+    if (t && Number.isFinite(audio.duration) && audio.duration - got > 5) return recover(t, got, "ended early");
+    // Or the file was cut short and the player believed it: far shorter than the song.
+    if (t?.duration && t.duration > 30 && audio.duration < t.duration / 2) return recover(t, got, `the file is ${audio.duration.toFixed(1)} s of a ${t.duration} s song`);
     advance(true);
   });
   audio.addEventListener("error", () => {

@@ -61,7 +61,7 @@ export function createInnerTube({ fetchImpl = fetch, log = () => {} } = {}) {
 
   return {
     /** A whole-file audio link for [videoId], or null when no client gives one. */
-    async audio(videoId, { signal } = {}) {
+    async audio(videoId, { signal, aac = false } = {}) {
       if (!VIDEO_ID.test(videoId) || Date.now() < blockedUntil) return null;
       const order = winner ? [winner, ...ORDER.filter((n) => n !== winner)] : ORDER;
       let botWalls = 0;
@@ -74,7 +74,7 @@ export function createInnerTube({ fetchImpl = fetch, log = () => {} } = {}) {
             if (status === "LOGIN_REQUIRED") botWalls++;
             continue;
           }
-          const format = bestAudio(json.streamingData?.adaptiveFormats ?? []);
+          const format = bestAudio(json.streamingData?.adaptiveFormats ?? [], aac);
           if (!format) continue;
           const a = {
             url: format.url,
@@ -104,10 +104,13 @@ export function createInnerTube({ fetchImpl = fetch, log = () => {} } = {}) {
   };
 }
 
-/** Opus 251/250 before AAC; direct links only (no cipher to solve). */
-export function bestAudio(formats) {
+/**
+ * Opus 251/250 before AAC ([aac]: the other way round, for songs whose Opus
+ * file won't play); direct links only (no cipher to solve).
+ */
+export function bestAudio(formats, aac = false) {
   const audio = formats.filter((f) => typeof f.url === "string" && f.mimeType?.startsWith("audio/"));
-  const rank = (f) => (f.mimeType.includes("opus") ? 1_000_000 : 0) + (f.bitrate ?? 0);
+  const rank = (f) => (f.mimeType.includes("opus") !== aac ? 1_000_000 : 0) + (f.bitrate ?? 0);
   return audio.sort((a, b) => rank(b) - rank(a))[0] ?? null;
 }
 

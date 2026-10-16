@@ -45,3 +45,12 @@ test("the client that served goes first next time", async () => {
   assert.ok(await it.audio("TUVcZfQe-Kw"));
   assert.deepEqual(seen, ["VISIONOS"]);
 });
+
+test("AAC first when a song's Opus file won't play", async () => {
+  const formats = [
+    { url: "https://x/251", mimeType: 'audio/webm; codecs="opus"', bitrate: 160_000 },
+    { url: "https://x/140", mimeType: 'audio/mp4; codecs="mp4a.40.2"', bitrate: 130_000 },
+  ];
+  assert.match(bestAudio(formats).url, /251/);
+  assert.match(bestAudio(formats, true).url, /140/);
+});

@@ -149,6 +149,17 @@ export async function openStore(dir) {
 
     download: (id) => data.downloads[id] ?? null,
 
+    /** Songs whose usual stream won't play: video id -> { strikes, noSaavn }. */
+    brokenStreams: () => data.brokenStreams ?? {},
+
+    setBrokenStream(id, entry) {
+      data.brokenStreams = { ...(data.brokenStreams ?? {}), [id]: entry };
+      // Only the latest few hundred matter.
+      const ids = Object.keys(data.brokenStreams);
+      for (const old of ids.slice(0, Math.max(0, ids.length - 500))) delete data.brokenStreams[old];
+      save();
+    },
+
     setDownload(id, entry) {
       if (entry) data.downloads[id] = entry;
       else delete data.downloads[id];
